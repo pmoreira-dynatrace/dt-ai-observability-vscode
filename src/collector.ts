@@ -1,0 +1,135 @@
+import * as vscode from 'vscode';
+import * as cp from 'child_process';
+import * as path from 'path';
+import * as http from 'http';
+import { getBinaryPath } from './downloader';
+import { StatusBarManager } from './statusBar';
+
+export class CollectorManager {
+    private process: cp.ChildProcess | undefined;
+    private readonly context: vscode.ExtensionContext;
+    private readonly statusBar: StatusBarManager;
+    private readonly outputChannel: vscode.OutputChannel;
+
+    constructor(context: vscode.ExtensionContext, statusBar: StatusBarManager, outputChannel: vscode.OutputChannel) {
+        this.context = context;
+        this.statusBar = statusBar;
+        this.outputChannel = outputChannel;
+    }
+
+    async start(): Promise<void> {
+        if (this.process) {
+            await this.stop();
+        }
+
+        const token = await this.context.secrets.get('dt-ingest-token');
+        const config = vscode.workspace.getConfiguration('dynatraceAiObs');
+        const endpoint = config.get<string>('endpoint', '');
+        const email = config.get<string>('userEmail', '');
+        const port = config.get<number>('collectorPort', 4318);
+
+        if (!token || !endpoint) {
+            vscode.window.showErrorMessage(
+                'Dynatrace AI Obs: credenciais não configuradas. Use "Dynatrace AI Obs: Configurar Credenciais".'
+            );
+            return;
+        }
+
+        let binaryPath: string;
+        try {
+            binaryPath = await getBinaryPath(this.context);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            vscode.window.showErrorMessage(`Dynatrace AI Obs: falha ao obter o coletor — ${msg}`);
+            return;
+        }
+
+        const configPath = path.join(this.context.extensionPath, 'resources', 'otel-collector.yaml');
+
+        this.log(`Iniciando OTel Collector...`);
+        this.log(`  Endpoint : ${endpoint}`);
+        this.log(`  Email    : ${email || '(não definido)'}`);
+        this.log(`  Porta    : ${port}`);
+
+        this.statusBar.setStarting();
+
+        this.process = cp.spawn(binaryPath, ['--config', configPath], {
+            env: {
+                ...process.env,
+                DT_OTLP_ENDPOINT: endpoint,
+                DT_INGEST_TOKEN: token,
+                USER_EMAIL: email,
+                COLLECTOR_PORT: String(port),
+            },
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        this.process.stdout?.on('data', (d: Buffer) => this.outputChannel.append(d.toString()));
+        this.process.stderr?.on('data', (d: Buffer) => this.outputChannel.append(d.toString()));
+
+        this.process.on('exit', (code) => {
+            this.log(`Coletor parou (código: ${code})`);
+            this.process = undefined;
+            this.statusBar.setStopped();
+            if (code !== 0 && code !== null) {
+                vscode.window.showWarningMessage(
+                    `Dynatrace AI Obs: coletor parou inesperadamente (código ${code}).`,
+                    'Ver Log'
+                ).then(a => { if (a === 'Ver Log') this.outputChannel.show(); });
+            }
+        });
+
+        try {
+            await this.waitForHealth(port);
+            this.statusBar.setRunning();
+            this.log(`Coletor pronto na porta ${port}.`);
+        } catch {
+            this.log(`ERRO: health check falhou. Porta ${port} pode estar ocupada.`);
+            vscode.window.showErrorMessage(
+                `Dynatrace AI Obs: não foi possível iniciar na porta ${port}.`,
+                'Ver Log'
+            ).then(a => { if (a === 'Ver Log') this.outputChannel.show(); });
+            await this.stop();
+        }
+    }
+
+    async stop(): Promise<void> {
+        if (this.process) {
+            this.process.kill('SIGTERM');
+            this.process = undefined;
+            this.log('Coletor parado manualmente.');
+        }
+        this.statusBar.setStopped();
+    }
+
+    isRunning(): boolean {
+        return !!this.process;
+    }
+
+    showLog(): void {
+        this.outputChannel.show();
+    }
+
+    private log(msg: string): void {
+        this.outputChannel.appendLine(`[${new Date().toISOString()}] ${msg}`);
+    }
+
+    private waitForHealth(port: number, timeoutMs = 15000): Promise<void> {
+        const healthPort = 13133;
+        return new Promise((resolve, reject) => {
+            const deadline = Date.now() + timeoutMs;
+            const check = () => {
+                const req = http.get(`http://localhost:${healthPort}`, (res) => {
+                    if (res.statusCode === 200) { resolve(); } else { retry(); }
+                });
+                req.on('error', retry);
+                req.setTimeout(1000, () => { req.destroy(); retry(); });
+            };
+            const retry = () => {
+                if (Date.now() > deadline) { reject(new Error('timeout')); return; }
+                setTimeout(check, 600);
+            };
+            setTimeout(check, 1500);
+        });
+    }
+}

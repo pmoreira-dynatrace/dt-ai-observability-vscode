@@ -1,0 +1,83 @@
+{
+  "name": "dt-ai-observability",
+  "displayName": "Dynatrace AI Observability",
+  "description": "Coleta traces de uso de AI (GitHub Copilot, Claude Code) e envia para o Dynatrace via OpenTelemetry.",
+  "version": "1.0.0",
+  "publisher": "dynatrace",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dynatrace/dt-ai-observability-vscode"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["dynatrace", "opentelemetry", "otel", "copilot", "observability", "ai"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dt-ai-obs.start",
+        "title": "Dynatrace AI Obs: Iniciar Coletor"
+      },
+      {
+        "command": "dt-ai-obs.stop",
+        "title": "Dynatrace AI Obs: Parar Coletor"
+      },
+      {
+        "command": "dt-ai-obs.configure",
+        "title": "Dynatrace AI Obs: Configurar Credenciais"
+      },
+      {
+        "command": "dt-ai-obs.status",
+        "title": "Dynatrace AI Obs: Ver Status"
+      },
+      {
+        "command": "dt-ai-obs.configureClaudeHooks",
+        "title": "Dynatrace AI Obs: Configurar Hooks do Claude Code"
+      },
+      {
+        "command": "dt-ai-obs.removeClaudeHooks",
+        "title": "Dynatrace AI Obs: Remover Hooks do Claude Code"
+      }
+    ],
+    "configuration": {
+      "title": "Dynatrace AI Observability",
+      "properties": {
+        "dynatraceAiObs.endpoint": {
+          "type": "string",
+          "default": "",
+          "description": "OTLP endpoint do Dynatrace. Ex: https://abc12345.live.dynatrace.com/api/v2/otlp"
+        },
+        "dynatraceAiObs.userEmail": {
+          "type": "string",
+          "default": "",
+          "description": "Seu e-mail — aparece nos spans no Dynatrace para identificar o dev."
+        },
+        "dynatraceAiObs.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Iniciar o coletor automaticamente ao abrir o VS Code."
+        },
+        "dynatraceAiObs.collectorPort": {
+          "type": "number",
+          "default": 4318,
+          "description": "Porta OTLP HTTP do coletor local."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "./scripts/package.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.99.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,45 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:${env:COLLECTOR_PORT}
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+  cumulativetodelta: {}
+  resource:
+    attributes:
+      - { key: user.email,             value: "${env:USER_EMAIL}", action: upsert }
+      - { key: deployment.environment, value: demo,                action: upsert }
+
+exporters:
+  debug:
+    verbosity: normal
+  otlphttp/dynatrace:
+    endpoint: "${env:DT_OTLP_ENDPOINT}"
+    headers:
+      Authorization: "Api-Token ${env:DT_INGEST_TOKEN}"
+    compression: gzip
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  telemetry:
+    metrics:
+      level: none   # evita conflito na porta 8888 (métricas internas do coletor)
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers:  [otlp]
+      processors: [batch, resource]
+      exporters:  [debug, otlphttp/dynatrace]
+    metrics:
+      receivers:  [otlp]
+      processors: [cumulativetodelta, batch, resource]
+      exporters:  [otlphttp/dynatrace]
