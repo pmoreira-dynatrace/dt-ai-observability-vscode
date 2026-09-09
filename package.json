@@ -41,6 +41,10 @@
       {
         "command": "dt-ai-obs.removeClaudeHooks",
         "title": "Dynatrace AI Obs: Remover Hooks do Claude Code"
+      },
+      {
+        "command": "dt-ai-obs.manageAttributes",
+        "title": "Dynatrace AI Obs: Gerenciar Atributos Customizados"
       }
     ],
     "configuration": {
@@ -65,6 +69,12 @@
           "type": "number",
           "default": 4318,
           "description": "Porta OTLP HTTP do coletor local."
+        },
+        "dynatraceAiObs.customAttributes": {
+          "type": "object",
+          "default": {},
+          "description": "Atributos customizados adicionados a todos os spans (Claude Code e Copilot). Ex: { \"squad\": \"platform\", \"cost_center\": \"cc-1234\" }",
+          "additionalProperties": { "type": "string" }
         }
       }
     }

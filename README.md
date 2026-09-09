@@ -11,10 +11,12 @@ VS Code / Cursor
 
 **What gets captured:**
 
-| Source | Prompt | Model | Duration | Tokens | Tool calls |
-|---|---|---|---|---|---|
-| GitHub Copilot Chat | ✓ (opt-in) | ✓ | ✓ | ✓ | — |
-| Claude Code | ✓ | ✓ | ✓ | ✓ (if available) | ✓ with input/output |
+| Source | Prompt | Response | Model | Duration | Tokens | Tool calls |
+|---|---|---|---|---|---|---|
+| GitHub Copilot Chat | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Claude Code | ✓ | ✓ | ✓ | ✓ | ✓ (incl. cache) | ✓ with input/output |
+
+> **AI Obs "Prompts stream" note:** The Prompts stream tab in the AI & LLM Observability app currently only shows data from GitHub Copilot Chat (native Dynatrace integration). Claude Code data arrives via OTel and is fully visible in **Distributed Traces**, **DQL queries**, and **Notebooks**. See the [DQL Dashboard](#dql-dashboard-for-claude-code) section for equivalent queries.
 
 ---
 
@@ -62,10 +64,8 @@ Generate a token: **Ctrl+K → Access Tokens → Generate new token**
 
 | Software | Version | Required for | Notes |
 |---|---|---|---|
-| **Python 3** | 3.6+ | Claude Code hooks | Already included on most Linux/macOS. Windows: install from [python.org](https://www.python.org/downloads/) and check **Add Python to PATH** |
+| **Python 3** | 3.6+ | Claude Code hooks | Pre-installed on macOS/Linux. Windows: install from [python.org](https://www.python.org/downloads/) and check **Add Python to PATH** |
 | **tar** | Any | Extracting collector binary | Pre-installed on all supported OSes |
-
-> **macOS Python note:** If installed via Homebrew, confirm it works by running `python3 --version` in a terminal. On macOS 12.3+ the system Python was removed — install via `brew install python3`.
 
 ---
 
@@ -90,19 +90,9 @@ Download `dt-ai-observability.vsix` from the [Releases](../../releases/latest) p
 code --install-extension dt-ai-observability.vsix
 ```
 
-**Via terminal without `code` in PATH (macOS):**
-```bash
-/Applications/Visual\ Studio\ Code.app/Contents/Resources/app/bin/code \
-  --install-extension dt-ai-observability.vsix
-```
-
 ### Step 3 — Configure credentials
 
-On first launch a prompt appears:
-
-> *"Dynatrace AI Observability: configure suas credenciais para começar."*
-
-Click **Configurar Agora** and fill in three fields:
+On first launch a prompt appears. Click **Configurar Agora** and fill in three fields:
 
 | Field | Example | Notes |
 |---|---|---|
@@ -112,17 +102,11 @@ Click **Configurar Agora** and fill in three fields:
 
 The token is stored in the **OS keychain** via VS Code SecretStorage — never in plain text.
 
-To reconfigure: `Ctrl+Shift+P` → **Dynatrace AI Obs: Configurar Credenciais**
+To reconfigure: `Cmd+Shift+P` → **Dynatrace AI Obs: Configurar Credenciais**
 
 ### Step 4 — First-time binary download
 
-On the first activation the extension automatically:
-1. Detects your OS and architecture
-2. Downloads the correct OTel Collector binary (~100 MB) from GitHub Releases
-3. Caches it permanently (not re-downloaded on future extension updates)
-4. Starts the collector
-
-A progress bar shows the download status.
+On first activation the extension automatically downloads the OTel Collector binary (~100 MB), caches it permanently, and starts it. A progress bar shows the download status.
 
 ### Step 5 — Verify it's working
 
@@ -136,12 +120,8 @@ A progress bar shows the download status.
 
 **Check the collector process:**
 ```bash
-# macOS / Linux
 curl http://localhost:13133
 # Expected: {"status":"Server available","upSince":"..."}
-
-# Windows PowerShell
-Invoke-WebRequest http://localhost:13133
 ```
 
 **Check the Output panel:**
@@ -157,23 +137,124 @@ You should see:
 
 ---
 
+## Custom attributes
+
+Add custom span attributes (squad, cost center, project, etc.) to every Claude Code and Copilot span without editing JSON files.
+
+**Via Quick Pick UI (recommended):**
+
+`Cmd+Shift+P` → **Dynatrace AI Obs: Gerenciar Atributos Customizados**
+
+The command opens an interactive menu:
+- **Add attribute** — type the key, then the value
+- **Remove attribute** — select from a list of existing keys
+- **Done** — saves and restarts the collector immediately
+
+Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS Code settings (for the collector resource attributes). No restart required.
+
+**Example use cases:**
+
+| Key | Value | Purpose |
+|---|---|---|
+| `squad` | `platform` | Filter by team in Dynatrace |
+| `cost_center` | `cc-1234` | Chargeback reporting |
+| `project` | `migration-v2` | Project-level attribution |
+| `environment` | `staging` | Environment tagging |
+
+---
+
 ## Validating data in Dynatrace
 
-Open **Notebooks** in your tenant and run these DQL queries.
+### AI & LLM Observability app
 
-### Claude Code spans
+Open the **AI Observability** app in your tenant:
+
+- **Overview tab**: shows total LLM requests, token usage, and model breakdown — Claude Code data appears here automatically.
+- **Explorer tab**: click on `claude-code` service to see request-level details, latency, and token usage per conversation turn.
+- **Distributed Traces**: full trace with span events containing prompt and completion text. Filter by `service.name = claude-code`.
+
+> **Prompts stream tab**: currently shows GitHub Copilot Chat only (native integration). Use the DQL queries below for equivalent Claude Code visibility.
+
+### DQL queries
+
+Open **Notebooks** in your tenant and run these queries.
+
+#### Claude Code — prompt stream
 
 ```dql
-fetch spans, from:now()-1h
+fetch spans, from:now()-24h
 | filter service.name == "claude-code"
-| filter span.name == "claude.conversation.turn"
-| fields timestamp, gen_ai.prompt, gen_ai.request.model,
-         claude.duration_ms, gen_ai.usage.input_tokens,
-         gen_ai.usage.output_tokens, gen_ai.usage.cost_usd
+| filter startsWith(span.name, "chat")
+| filter isNotNull(`gen_ai.prompt`)
+| fields
+    timestamp,
+    Developer     = `user.email`,
+    Model         = `gen_ai.request.model`,
+    Duration      = duration,
+    Input_Tokens  = `gen_ai.usage.input_tokens`,
+    Output_Tokens = `gen_ai.usage.output_tokens`,
+    Prompt        = `gen_ai.prompt`,
+    Response      = `gen_ai.completion`
 | sort timestamp desc
 ```
 
-### Claude Code tool calls
+#### Claude Code — usage by developer
+
+```dql
+fetch spans, from:now()-24h
+| filter service.name == "claude-code"
+| filter startsWith(span.name, "chat")
+| summarize
+    Requests      = count(),
+    Input_Tokens  = sum(toLong(`gen_ai.usage.input_tokens`)),
+    Output_Tokens = sum(toLong(`gen_ai.usage.output_tokens`)),
+    Total_Tokens  = sum(toLong(`gen_ai.usage.input_tokens`) + toLong(`gen_ai.usage.output_tokens`)),
+    Avg_Duration  = avg(duration)
+  by: Developer = `user.email`
+| sort Total_Tokens desc
+```
+
+#### Claude Code — usage by model
+
+```dql
+fetch spans, from:now()-24h
+| filter service.name == "claude-code"
+| filter startsWith(span.name, "chat")
+| summarize
+    Requests     = count(),
+    Total_Tokens = sum(toLong(`gen_ai.usage.input_tokens`) + toLong(`gen_ai.usage.output_tokens`)),
+    Avg_Duration = avg(duration)
+  by: Model = `gen_ai.request.model`
+| sort Total_Tokens desc
+```
+
+#### Claude Code — volume over time (7 days)
+
+```dql
+fetch spans, from:now()-7d
+| filter service.name == "claude-code"
+| filter startsWith(span.name, "chat")
+| summarize
+    Requests = count(),
+    Tokens   = sum(toLong(`gen_ai.usage.input_tokens`) + toLong(`gen_ai.usage.output_tokens`))
+  by: bin(timestamp, 1h)
+| sort timestamp asc
+```
+
+#### Claude Code — cost estimate per developer
+
+```dql
+fetch spans, from:now()-30d
+| filter service.name == "claude-code"
+| filter startsWith(span.name, "chat")
+| summarize
+    Total_Cost_USD = sum(toDouble(`gen_ai.usage.cost_usd`)),
+    Requests       = count()
+  by: Developer = `user.email`
+| sort Total_Cost_USD desc
+```
+
+#### Claude Code — tool calls
 
 ```dql
 fetch spans, from:now()-1h
@@ -183,7 +264,7 @@ fetch spans, from:now()-1h
 | sort timestamp desc
 ```
 
-### GitHub Copilot Chat spans
+#### GitHub Copilot Chat spans
 
 ```dql
 fetch spans, from:now()-1h
@@ -193,41 +274,19 @@ fetch spans, from:now()-1h
 | sort timestamp desc
 ```
 
-> To capture Copilot prompt/response content, add to your VS Code settings:
-> ```json
-> "github.copilot.chat.otel.captureContent": true
-> ```
+---
 
-### Response time analysis
+## DQL Dashboard for Claude Code
 
-```dql
-fetch spans, from:now()-24h
-| filter service.name == "claude-code"
-| filter span.name == "claude.conversation.turn"
-| fieldsAdd dur_ms = toDouble(claude.duration_ms)
-| summarize p50 = percentile(dur_ms, 50),
-            p95 = percentile(dur_ms, 95),
-            p99 = percentile(dur_ms, 99),
-            requests = count()
-```
+Save as a **Notebook** in Dynatrace (Menu → Notebooks → New) to get a persistent dashboard equivalent to the AI Obs Prompts stream.
 
-### Cost estimate (last 24h)
-
-```dql
-fetch spans, from:now()-24h
-| filter service.name == "claude-code"
-| filter isNotNull(gen_ai.usage.cost_usd)
-| summarize total_cost_usd = sum(toDouble(gen_ai.usage.cost_usd)),
-            requests = count(),
-            by:{gen_ai.request.model}
-| sort total_cost_usd desc
-```
+Paste the five queries above into separate tiles, set the time range to **Last 24 hours**, and pin to a Dashboard for team-wide visibility.
 
 ---
 
 ## Available commands
 
-`Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac):
+`Cmd+Shift+P` (or `Ctrl+Shift+P` on Windows/Linux):
 
 | Command | Description |
 |---|---|
@@ -235,6 +294,7 @@ fetch spans, from:now()-24h
 | `Dynatrace AI Obs: Iniciar Coletor` | Start the collector manually |
 | `Dynatrace AI Obs: Parar Coletor` | Stop the collector |
 | `Dynatrace AI Obs: Ver Status` | Show whether the collector is running |
+| `Dynatrace AI Obs: Gerenciar Atributos Customizados` | Add or remove custom span attributes via Quick Pick UI |
 | `Dynatrace AI Obs: Configurar Hooks do Claude Code` | Set up Claude Code hooks manually |
 | `Dynatrace AI Obs: Remover Hooks do Claude Code` | Remove Claude Code hooks |
 
@@ -248,23 +308,18 @@ fetch spans, from:now()-24h
 | `dynatraceAiObs.userEmail` | `""` | Developer email (appears in spans) |
 | `dynatraceAiObs.autoStart` | `true` | Auto-start collector when VS Code opens |
 | `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port |
+| `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command) |
 
 ---
 
 ## Cursor (without GitHub Copilot)
 
-Cursor uses its own AI and doesn't support the `github.copilot.chat.otel.*` settings. To capture Cursor spans, add these environment variables to your shell profile **before** opening Cursor:
+Cursor uses its own AI and doesn't support the `github.copilot.chat.otel.*` settings. To capture Cursor spans add these environment variables to your shell profile **before** opening Cursor:
 
 **macOS / Linux** — add to `~/.zshrc` or `~/.bashrc`:
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 export OTEL_SERVICE_NAME=cursor-ide
-```
-
-**Windows PowerShell** — add to `$PROFILE`:
-```powershell
-$env:OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
-$env:OTEL_SERVICE_NAME            = "cursor-ide"
 ```
 
 Then restart the terminal and open Cursor from it to inherit the variables.
@@ -280,22 +335,14 @@ Then restart the terminal and open Cursor from it to inherit the variables.
 | No spans in Dynatrace | Invalid token or endpoint uses `.apps.` | Reconfigure via **Configurar Credenciais** |
 | `user.email` null in spans | Email not filled during setup | Reconfigure and add email |
 | Download fails | No access to `github.com` | Check proxy/firewall; allow `github.com` and `objects.githubusercontent.com` |
-| Copilot sends data but Claude Code doesn't | Python 3 not found by the hook | Run `python3 --version` in terminal; install Python 3 if missing |
-| Claude Code hooks not executing | Claude Code wasn't restarted after hook setup | Close and reopen Claude Code (terminal or VS Code) |
-| Notification about hooks didn't appear | `~/.claude` didn't exist yet | Run `Cmd+Shift+P` → **Dynatrace AI Obs: Configurar Hooks do Claude Code** manually |
+| Copilot sends data but Claude Code doesn't | Python 3 not found | Run `python3 --version` in terminal; install if missing |
+| Claude Code model shows as "claude" (not full name) | Old spans before fix | Only affects historical spans; new spans show `claude-sonnet-4-6` etc. |
+| Custom attributes command not found | Extension not updated | Reinstall from latest VSIX |
+| Claude Code hooks not executing | Claude Code not restarted after hook setup | Close and reopen Claude Code |
 
 ---
 
 ## Building from source
-
-### Prerequisites
-
-```bash
-node --version   # >= 18.0 LTS
-npm --version    # >= 9.0
-```
-
-### Steps
 
 ```bash
 # 1. Clone
@@ -305,9 +352,11 @@ cd dt-ai-observability-vscode
 # 2. Install dependencies
 npm install
 
-# 3. Build VSIX (~27 KB, no binary bundled)
-./scripts/package.sh
+# 3. Compile
+npm run compile
 
+# 4. Build VSIX
+./scripts/package.sh
 # Output: dt-ai-observability.vsix
 ```
 
@@ -327,9 +376,8 @@ vscode-dt-ai-observability/
 ├── resources/
 │   └── otel-collector.yaml  — Collector config (uses env vars for credentials)
 ├── scripts/
-│   └── package.sh        — builds the single VSIX
+│   └── package.sh        — builds the VSIX
 ├── README.md
-├── GUIDE.md              — detailed deployment guide (Portuguese)
 └── package.json
 ```
 
@@ -337,8 +385,7 @@ vscode-dt-ai-observability/
 
 ## Privacy and security
 
-- **Prompts are opt-in**: Claude Code captures prompts by default (can be disabled by removing hooks). Copilot captures prompts only when `captureContent: true` is set.
-- **No response content from Claude Code**: The Claude Code hook system does not expose the AI's response text — only the user prompt and tool call data are available.
+- **Prompt and response capture**: Claude Code captures both the user prompt and AI response text by default. This can be disabled by running **Dynatrace AI Obs: Remover Hooks do Claude Code**.
 - **Token stored in OS keychain**: VS Code SecretStorage is backed by the OS keychain (Keychain on macOS, Credential Manager on Windows, libsecret on Linux) — never stored in plain text or `settings.json`.
 - **Collector makes outbound HTTPS only**: The local collector only connects outbound to your Dynatrace tenant. No public port is exposed.
 - **Verifiable binary**: Downloaded directly from [open-telemetry/opentelemetry-collector-releases](https://github.com/open-telemetry/opentelemetry-collector-releases).

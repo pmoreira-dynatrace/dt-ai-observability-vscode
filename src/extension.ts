@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { CollectorManager } from './collector';
 import { StatusBarManager } from './statusBar';
 import { configureCopilotOtel } from './settings';
-import { configureClaudeHooks, removeClaudeHooks, autoConfigureClaudeHooks, setLogger } from './claudeHooks';
+import { configureClaudeHooks, removeClaudeHooks, autoConfigureClaudeHooks, setLogger, writeAttrsFile, manageCustomAttributes } from './claudeHooks';
 
 let collectorManager: CollectorManager;
 let statusBarManager: StatusBarManager;
@@ -28,6 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
         vscode.commands.registerCommand('dt-ai-obs.configureClaudeHooks', configureClaudeHooks),
         vscode.commands.registerCommand('dt-ai-obs.removeClaudeHooks', removeClaudeHooks),
+        vscode.commands.registerCommand('dt-ai-obs.manageAttributes', manageCustomAttributes),
         statusBarManager.statusBarItem
     );
 
@@ -35,6 +36,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Configurar hooks do Claude Code automaticamente (silencioso se não houver Claude instalado)
     autoConfigureClaudeHooks();
+
+    // Quando customAttributes mudar, atualizar otel-attrs.json imediatamente e reiniciar o coletor
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(async e => {
+            if (e.affectsConfiguration('dynatraceAiObs.customAttributes')) {
+                writeAttrsFile();
+                if (collectorManager.isRunning()) {
+                    await collectorManager.stop();
+                    await collectorManager.start();
+                }
+            }
+        })
+    );
 
     const autoStart = vscode.workspace.getConfiguration('dynatraceAiObs').get<boolean>('autoStart', true);
     if (autoStart && await hasCredentials(context)) {

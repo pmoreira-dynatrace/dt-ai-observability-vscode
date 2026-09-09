@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import { getBinaryPath } from './downloader';
@@ -44,7 +45,7 @@ export class CollectorManager {
             return;
         }
 
-        const configPath = path.join(this.context.extensionPath, 'resources', 'otel-collector.yaml');
+        const configPath = this.buildCollectorConfig(config.get<Record<string,string>>('customAttributes', {}));
 
         this.log(`Iniciando OTel Collector...`);
         this.log(`  Endpoint : ${endpoint}`);
@@ -108,6 +109,25 @@ export class CollectorManager {
 
     showLog(): void {
         this.outputChannel.show();
+    }
+
+    private buildCollectorConfig(customAttrs: Record<string, string>): string {
+        const staticPath = path.join(this.context.extensionPath, 'resources', 'otel-collector.yaml');
+        if (Object.keys(customAttrs).length === 0) {
+            return staticPath;
+        }
+        const base = fs.readFileSync(staticPath, 'utf8');
+        const extraLines = Object.entries(customAttrs)
+            .map(([k, v]) => `      - { key: "${k}", value: "${v.replace(/"/g, '\\"')}", action: upsert }`)
+            .join('\n');
+        const generated = base.replace(
+            /(\s*- \{ key: deployment\.environment.*?\})/,
+            `$1\n${extraLines}`
+        );
+        const runtimePath = path.join(this.context.globalStorageUri.fsPath, 'otel-collector-runtime.yaml');
+        fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
+        fs.writeFileSync(runtimePath, generated, 'utf8');
+        return runtimePath;
     }
 
     private log(msg: string): void {
