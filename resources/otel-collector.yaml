@@ -15,15 +15,19 @@ processors:
     attributes:
       - { key: user.email,             value: "${env:USER_EMAIL}", action: upsert }
       - { key: deployment.environment, value: demo,                action: upsert }
-  # Drop Copilot internal agent spans (context-enrichment calls that duplicate the user prompt).
-  # These contain VS Code agent metadata injected before the real user message.
-  filter/copilot_internal:
+  # Copilot internal agent spans contain <environment_info>/<workspace_info> injected by VS Code.
+  # Instead of dropping them (which would lose their token counts), we clear the prompt/completion
+  # content so they don't pollute the Prompts stream, while keeping tokens for accurate accounting.
+  transform/copilot_internal:
     error_mode: ignore
-    traces:
-      span:
-        - |
-          attributes["gen_ai.prompt"] != nil and
-          IsMatch(attributes["gen_ai.prompt"], ".*<environment_info>.*")
+    trace_statements:
+      - context: span
+        conditions:
+          - attributes["gen_ai.prompt"] != nil and IsMatch(attributes["gen_ai.prompt"], ".*<environment_info>.*")
+        statements:
+          - set(attributes["gen_ai.prompt"], "[internal agent context — content hidden]")
+          - set(attributes["gen_ai.completion"], "[internal agent context — content hidden]")
+          - set(attributes["copilot.internal"], true)
 
 exporters:
   debug:
@@ -46,7 +50,7 @@ service:
   pipelines:
     traces:
       receivers:  [otlp]
-      processors: [filter/copilot_internal, batch, resource]
+      processors: [transform/copilot_internal, batch, resource]
       exporters:  [debug, otlphttp/dynatrace]
     metrics:
       receivers:  [otlp]
