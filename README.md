@@ -163,6 +163,29 @@ Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS 
 
 ---
 
+## Understanding token counts
+
+### Why Dynatrace shows far more tokens than expected
+
+You may notice that a short question like *"What is the strongest Pokémon in the first region?"* (~10 tokens) appears in Dynatrace as **20,000+ tokens**. This is correct — and it reveals what AI tools actually cost.
+
+When you send a message in GitHub Copilot Chat or Claude Code, the AI assistant does not receive just your question. It sends a complete API payload to the LLM that includes:
+
+| Component | Tokens (approx.) |
+|---|---|
+| System prompt (assistant instructions, behavior rules) | 5,000 – 10,000 |
+| Tool definitions (list of available tools + parameters) | 5,000 – 15,000 |
+| Workspace context (open files, folder structure) | 0 – 5,000 |
+| Conversation history (previous turns) | variable |
+| Your actual question | 10 – 200 |
+| **Total per request** | **15,000 – 30,000+** |
+
+The Copilot Chat UI shows only your message's token count. The OpenAI tokenizer counts only what you paste into it. **Dynatrace shows the real number** — the full payload sent to the LLM API, which is what actually gets billed.
+
+This is the core value of this observability extension: each question that looks like "10 tokens" in the Copilot UI is actually 20,000+ tokens at the API level. At scale, across hundreds of developers, this gap between perceived and real consumption is what drives unexpected AI costs.
+
+---
+
 ## Validating data in Dynatrace
 
 ### AI & LLM Observability app
