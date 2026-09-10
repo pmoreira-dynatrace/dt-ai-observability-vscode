@@ -22,52 +22,66 @@ VS Code / Cursor
 
 ---
 
-## Prerequisites
+## ✅ Prerequisites
 
-### Dynatrace tenant
+Before you start, make sure you have a Dynatrace tenant ready and a machine that meets the minimum requirements below.
+
+### ☁️ Dynatrace tenant
 
 | Requirement | Detail |
 |---|---|
-| Tenant type | SaaS Latest or Managed with Grail enabled |
-| App | AI & LLM Observability (install from Hub) |
-| API token | Scopes: `openTelemetryTrace.ingest` + `metrics.ingest` |
+| 🏢 **Tenant type** | SaaS Latest or Managed with Grail enabled |
+| 📦 **App** | AI & LLM Observability (install from Hub) |
+| 🔑 **API token** | Scopes: `openTelemetryTrace.ingest` + `metrics.ingest` |
 
-Generate a token: **Ctrl+K → Access Tokens → Generate new token**
+> 💡 **Generate a token:** `Ctrl+K` → **Access Tokens** → **Generate new token**
 
-### Developer machine
+### 💻 Developer machine
 
-#### Hardware
+<details open>
+<summary><b>🖥️ Hardware</b></summary>
 
 | Resource | Minimum | Notes |
 |---|---|---|
-| RAM | 4 GB | Collector uses ~50–80 MB extra |
-| CPU | Any | < 2% additional usage |
-| Disk | 200 MB free | ~100 MB for cached collector binary |
-| Network | Internet access | Required once on first activation (binary download) |
+| 🧠 **RAM** | 4 GB | Collector uses ~50–80 MB extra |
+| ⚙️ **CPU** | Any | < 2% additional usage |
+| 💾 **Disk** | 200 MB free | ~100 MB for cached collector binary |
+| 🌐 **Network** | Internet access | Required once on first activation (binary download) |
 
-#### Operating System
+</details>
+
+<details open>
+<summary><b>🧩 Operating System</b></summary>
 
 | OS | Minimum version | Architectures |
 |---|---|---|
-| **macOS** | 10.15 Catalina | x64 (Intel), arm64 (Apple Silicon) |
-| **Windows** | 10 build 17134 (1803) | x64 |
-| **Linux** | Ubuntu 20.04 / Debian 11 / RHEL 8 / Fedora 36 | x64 |
+| 🍎 **macOS** | 10.15 Catalina | x64 (Intel), arm64 (Apple Silicon) |
+| 🪟 **Windows** | 10 build 17134 (1803) | x64 |
+| 🐧 **Linux** | Ubuntu 20.04 / Debian 11 / RHEL 8 / Fedora 36 | x64 |
 
-> Windows 1803+ is required for the built-in `tar` command used to extract the collector binary.
+> ⚠️ Windows 1803+ is required for the built-in `tar` command used to extract the collector binary.
 
-#### IDE
+</details>
+
+<details open>
+<summary><b>🧑‍💻 IDE</b></summary>
 
 | IDE | Minimum version |
 |---|---|
-| **VS Code** | 1.99.0 |
-| **Cursor** | 0.40+ |
+| 🔵 **VS Code** | 1.99.0 |
+| ⚫ **Cursor** | 0.40+ |
 
-#### Software (end-user)
+</details>
+
+<details open>
+<summary><b>📚 Software (end-user)</b></summary>
 
 | Software | Version | Required for | Notes |
 |---|---|---|---|
-| **Python 3** | 3.6+ | Claude Code hooks | Pre-installed on macOS/Linux. Windows: install from [python.org](https://www.python.org/downloads/) and check **Add Python to PATH** |
-| **tar** | Any | Extracting collector binary | Pre-installed on all supported OSes |
+| 🐍 **Python 3** | 3.6+ | Claude Code hooks | Pre-installed on macOS/Linux. Windows: install from [python.org](https://www.python.org/downloads/) and check **Add Python to PATH** |
+| 📦 **tar** | Any | Extracting collector binary | Pre-installed on all supported OSes |
+
+</details>
 
 ---
 
