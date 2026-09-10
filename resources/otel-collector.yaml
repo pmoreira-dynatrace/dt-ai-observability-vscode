@@ -16,8 +16,10 @@ processors:
       - { key: user.email,             value: "${env:USER_EMAIL}", action: upsert }
       - { key: deployment.environment, value: demo,                action: upsert }
   # Copilot internal agent spans contain <environment_info>/<workspace_info> injected by VS Code.
-  # Instead of dropping them (which would lose their token counts), we clear the prompt/completion
-  # content so they don't pollute the Prompts stream, while keeping tokens for accurate accounting.
+  # We hide the prompt/completion content to avoid noise, but keep token attributes intact.
+  # Removing tokens from spans would cause chart/table discrepancy: the AI Obs chart reads from
+  # the gen_ai.client.token.usage metric (unaffected by span transforms), while the table reads
+  # span attributes — deleting span tokens makes table undercount vs the chart.
   transform/copilot_internal:
     error_mode: ignore
     trace_statements:
@@ -28,8 +30,6 @@ processors:
           - set(attributes["gen_ai.prompt"], "[internal agent context — content hidden]")
           - set(attributes["gen_ai.completion"], "[internal agent context — content hidden]")
           - set(attributes["copilot.internal"], true)
-          - delete_key(attributes, "gen_ai.usage.input_tokens")
-          - delete_key(attributes, "gen_ai.usage.output_tokens")
 
 exporters:
   debug:
