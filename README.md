@@ -91,6 +91,75 @@ VS Code / Cursor
 | **Python 3** | 3.6+ | Claude Code hooks | Pre-installed on macOS/Linux. Windows: install from [python.org](https://www.python.org/downloads/) and check **Add Python to PATH** |
 | **tar** | Any | Extracting collector binary | Pre-installed on all supported OSes |
 
+#### Network and firewall requirements
+
+The extension requires outbound HTTPS (port 443) access to the following domains. **All connections are outbound only — no inbound ports are opened on the developer machine.**
+
+> **For corporate environments:** share this table with your IT/security team before installation. Missing any of these will cause silent failures (no error shown to the user — data simply stops flowing).
+
+**Required for installation (one-time):**
+
+| Domain | Protocol/Port | What it does | When |
+|---|---|---|---|
+| `github.com` | HTTPS / 443 | Download the `.vsix` extension file from GitHub Releases | First install and updates |
+| `objects.githubusercontent.com` | HTTPS / 443 | GitHub CDN — where release asset files are actually served from (GitHub redirects here) | First install and updates |
+| `raw.githubusercontent.com` | HTTPS / 443 | GitHub raw file hosting — used during binary version check | First activation |
+
+**Required for OTel Collector binary download (one-time, ~100 MB):**
+
+| Domain | Protocol/Port | What it does | When |
+|---|---|---|---|
+| `github.com` | HTTPS / 443 | Fetch the release metadata for `otelcol-contrib` binary | First activation |
+| `objects.githubusercontent.com` | HTTPS / 443 | Download the `otelcol-contrib` binary (tar.gz, ~100 MB) from GitHub Release assets | First activation only — cached permanently after |
+
+The exact URL pattern for the binary download is:
+```
+https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/
+  v{version}/otelcol-contrib_{version}_{os}_{arch}.tar.gz
+```
+
+**Required at runtime (continuous):**
+
+| Domain | Protocol/Port | What it does | When |
+|---|---|---|---|
+| `*.live.dynatrace.com` | HTTPS / 443 | Send OTel traces and metrics to your Dynatrace tenant | Every time spans are generated |
+
+Replace `*` with your tenant ID, e.g.: `abc12345.live.dynatrace.com`
+
+**Local ports (no external access required):**
+
+| Port | Used by | Notes |
+|---|---|---|
+| `4318` (TCP, localhost) | OTel Collector — OTLP HTTP receiver | Only accessible from localhost; receives spans from VS Code extensions |
+| `4317` (TCP, localhost) | OTel Collector — OTLP gRPC receiver | Only accessible from localhost |
+| `13133` (TCP, localhost) | OTel Collector — health check endpoint | Used by the extension to verify the collector started correctly |
+
+> If port `4318` or `13133` is already in use on the machine (by another process), change the collector port in VS Code settings: `dynatraceAiObs.collectorPort`.
+
+**Optional (Windows only — Python installation):**
+
+| Domain | Protocol/Port | What it does |
+|---|---|---|
+| `python.org` | HTTPS / 443 | Download Python 3 installer (required for Claude Code hooks) |
+| `files.pythonhosted.org` | HTTPS / 443 | Python package hosting (pip) |
+
+**Summary for IT/security ticket:**
+
+```
+Allow outbound HTTPS (443) to:
+- github.com
+- objects.githubusercontent.com
+- raw.githubusercontent.com
+- *.live.dynatrace.com  (replace * with tenant ID)
+
+Optional (Windows, Python install):
+- python.org
+- files.pythonhosted.org
+
+No inbound rules required.
+No VPN split-tunnel changes required.
+```
+
 ---
 
 ## Installation (end users)
