@@ -32,7 +32,29 @@ VS Code / Cursor
 | App | AI & LLM Observability (install from Hub) |
 | API token | Scopes: `openTelemetryTrace.ingest` + `metrics.ingest` |
 
-Generate a token: **Ctrl+K → Access Tokens → Generate new token**
+#### Instalar o app de AI Observability
+
+1. Acesse o **Hub**, pesquise por `AI observability` e selecione o app **AI Observability**.
+
+   ![Buscar o app AI Observability no Hub](docs/images/app-01-search.png)
+
+2. Abra o app e clique em **Open** (ou **Install**, caso ainda não esteja instalado) para disponibilizá-lo na tenant.
+
+   ![Detalhes do app AI Observability](docs/images/app-02-details.png)
+
+#### Gerar o token de acesso
+
+1. Abra o menu rápido com **Ctrl+K**, pesquise por `acc` e selecione **Access Tokens** (Classic apps).
+
+   ![Buscar Access Tokens via Ctrl+K](docs/images/token-01-search.png)
+
+2. Na tela de Access tokens, clique em **Generate new token**.
+
+   ![Botão Generate new token](docs/images/token-02-generate.png)
+
+3. Dê um nome ao token e selecione os scopes `metrics.ingest` (**Ingest metrics**) e `openTelemetryTrace.ingest` (**Ingest OpenTelemetry traces**). Em seguida, clique em **Generate token**.
+
+   ![Selecionar scopes e gerar o token](docs/images/token-03-scopes.png)
 
 ### Developer machine
 
