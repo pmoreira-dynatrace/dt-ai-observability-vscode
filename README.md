@@ -106,7 +106,13 @@ Download `dt-ai-observability.vsix` from the [Releases](../../releases/latest) p
 2. Click the **Extensions** icon (`Ctrl+Shift+X` / `Cmd+Shift+X`)
 3. Click `···` (three dots) at the top of the Extensions panel
 4. Select **Install from VSIX...**
+
+   ![Menu Install from VSIX](docs/images/install-01-vsix-menu.png)
+
 5. Pick the downloaded `dt-ai-observability.vsix`
+
+   ![Selecionar o arquivo .vsix](docs/images/install-02-vsix-file.png)
+
 6. Click **Reload**
 
 **Via terminal (if `code` is in PATH):**
@@ -123,6 +129,18 @@ On first launch a prompt appears. Click **Configurar Agora** and fill in three f
 | OTLP Endpoint | `https://abc12345.live.dynatrace.com/api/v2/otlp` | Use `.live.`, not `.apps.` |
 | API Token | `dt0c01.XXXXXXXXXX...` | Must start with `dt0c01.` |
 | Email (optional) | `dev@company.com` | Appears in spans to identify the developer |
+
+1. Informe o **OTLP Endpoint**:
+
+   ![Configurar OTLP Endpoint](docs/images/config-01-endpoint.png)
+
+2. Informe o **API Token**:
+
+   ![Configurar API Token](docs/images/config-02-token.png)
+
+3. Informe o **Email** (opcional):
+
+   ![Configurar Email](docs/images/config-03-email.png)
 
 The token is stored in the **OS keychain** via VS Code SecretStorage — never in plain text.
 
