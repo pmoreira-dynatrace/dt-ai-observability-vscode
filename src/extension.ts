@@ -23,9 +23,8 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('dt-ai-obs.stop', () => collectorManager.stop()),
         vscode.commands.registerCommand('dt-ai-obs.configure', () => runConfigureFlow(context)),
         vscode.commands.registerCommand('dt-ai-obs.status', () => {
-            vscode.window.showInformationMessage(
-                `Dynatrace AI Obs: coletor está ${collectorManager.isRunning() ? 'RODANDO ✓' : 'PARADO ✗'}`
-            );
+            const version = context.extension.packageJSON.version as string;
+            collectorManager.showStatus(version);
         }),
         vscode.commands.registerCommand('dt-ai-obs.configureClaudeHooks', configureClaudeHooks),
         vscode.commands.registerCommand('dt-ai-obs.removeClaudeHooks', removeClaudeHooks),

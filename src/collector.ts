@@ -117,6 +117,36 @@ export class CollectorManager {
         this.outputChannel.show();
     }
 
+    showStatus(extensionVersion: string): void {
+        const config = vscode.workspace.getConfiguration('dynatraceAiObs');
+        const endpoint = config.get<string>('endpoint', '');
+        const email = config.get<string>('userEmail', '');
+        const port = config.get<number>('collectorPort', 4318);
+        const healthPort = config.get<number>('healthCheckPort', 13133);
+
+        let tenant = '(não configurado)';
+        try {
+            tenant = new URL(endpoint).hostname;
+        } catch { /* ignore */ }
+
+        const running = this.isRunning();
+        const lines = [
+            '─────────────────────────────────────────────',
+            `  Dynatrace AI Observability — Status`,
+            '─────────────────────────────────────────────',
+            `  Estado          : ${running ? 'RODANDO ✓' : 'PARADO ✗'}`,
+            `  Versão          : ${extensionVersion}`,
+            `  Tenant          : ${tenant || '(não configurado)'}`,
+            `  Porta OTLP      : ${port}`,
+            `  Porta health    : ${healthPort}`,
+            `  Email           : ${email || '(não definido)'}`,
+            `  IDE             : ${vscode.env.appName} ${vscode.version}`,
+            '─────────────────────────────────────────────',
+        ];
+        lines.forEach(l => this.outputChannel.appendLine(l));
+        this.outputChannel.show(true);
+    }
+
     private buildCollectorConfig(customAttrs: Record<string, string>): string {
         const staticPath = path.join(this.context.extensionPath, 'resources', 'otel-collector.yaml');
         if (Object.keys(customAttrs).length === 0) {
