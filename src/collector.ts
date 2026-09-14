@@ -11,17 +11,38 @@ export class CollectorManager {
     private readonly context: vscode.ExtensionContext;
     private readonly statusBar: StatusBarManager;
     private readonly outputChannel: vscode.OutputChannel;
+    private readonly pidFile: string;
 
     constructor(context: vscode.ExtensionContext, statusBar: StatusBarManager, outputChannel: vscode.OutputChannel) {
         this.context = context;
         this.statusBar = statusBar;
         this.outputChannel = outputChannel;
+        this.pidFile = path.join(context.globalStorageUri.fsPath, 'otelcol.pid');
+    }
+
+    private killStalePid(): void {
+        try {
+            const pid = parseInt(fs.readFileSync(this.pidFile, 'utf8').trim(), 10);
+            if (!isNaN(pid)) {
+                process.kill(pid, 'SIGTERM');
+                this.log(`Processo anterior (PID ${pid}) finalizado.`);
+            }
+        } catch { /* process already gone or file missing */ }
+        try { fs.unlinkSync(this.pidFile); } catch { /* ignore */ }
+    }
+
+    private writePid(pid: number): void {
+        try {
+            fs.mkdirSync(path.dirname(this.pidFile), { recursive: true });
+            fs.writeFileSync(this.pidFile, String(pid), 'utf8');
+        } catch { /* ignore */ }
     }
 
     async start(): Promise<void> {
         if (this.process) {
             await this.stop();
         }
+        this.killStalePid();
 
         const token = await this.context.secrets.get('dt-ingest-token');
         const config = vscode.workspace.getConfiguration('dynatraceAiObs');
@@ -71,12 +92,17 @@ export class CollectorManager {
             stdio: ['ignore', 'pipe', 'pipe'],
         });
 
+        if (this.process.pid) {
+            this.writePid(this.process.pid);
+        }
+
         this.process.stdout?.on('data', (d: Buffer) => this.outputChannel.append(d.toString()));
         this.process.stderr?.on('data', (d: Buffer) => this.outputChannel.append(d.toString()));
 
         this.process.on('exit', (code) => {
             this.log(`Coletor parou (código: ${code})`);
             this.process = undefined;
+            try { fs.unlinkSync(this.pidFile); } catch { /* ignore */ }
             this.statusBar.setStopped();
             if (code !== 0 && code !== null) {
                 vscode.window.showWarningMessage(
@@ -88,6 +114,15 @@ export class CollectorManager {
 
         try {
             await this.waitForHealth(healthPort);
+            if (!this.process) {
+                // Process died while health check was pending (e.g. port conflict on healthPort)
+                this.log(`ERRO: coletor parou antes de ficar pronto — a porta ${healthPort} pode estar em uso por outro processo.`);
+                vscode.window.showErrorMessage(
+                    `Dynatrace AI Obs: coletor falhou ao iniciar. Porta ${healthPort} pode estar em uso. Altere dynatraceAiObs.healthCheckPort nas configurações.`,
+                    'Abrir Configurações'
+                ).then(a => { if (a === 'Abrir Configurações') vscode.commands.executeCommand('workbench.action.openSettings', 'dynatraceAiObs.healthCheckPort'); });
+                return;
+            }
             this.statusBar.setRunning();
             this.log(`Coletor pronto na porta ${port} (health check: ${healthPort}).`);
         } catch {

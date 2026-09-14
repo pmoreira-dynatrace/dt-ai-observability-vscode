@@ -449,17 +449,28 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 
 ---
 
-## Cursor (without GitHub Copilot)
+## Cursor
 
-Cursor uses its own AI and doesn't support the `github.copilot.chat.otel.*` settings. To capture Cursor spans add these environment variables to your shell profile **before** opening Cursor:
+### Claude Code inside Cursor
 
-**macOS / Linux** — add to `~/.zshrc` or `~/.bashrc`:
-```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-export OTEL_SERVICE_NAME=cursor-ide
-```
+Claude Code runs as a CLI inside the Cursor integrated terminal. The hook-based integration works exactly the same as in VS Code — install the extension, and the hook is deployed automatically.
 
-Then restart the terminal and open Cursor from it to inherit the variables.
+### Cursor native AI chat — current limitation
+
+Cursor's built-in AI chat (the subscription-based model via `api2.cursor.sh`) does **not** expose OTel hooks or a configurable API endpoint for its native chat. This means it is not possible to capture native Cursor AI prompts with this extension today.
+
+**What was investigated:**
+
+| Approach | Feasibility | Why not used |
+|---|---|---|
+| OTel env vars (`OTEL_EXPORTER_OTLP_ENDPOINT`) | ✗ | Cursor does not auto-instrument its AI calls |
+| Custom OpenAI-compatible proxy | ⚠ Partial | Only works when user brings their own API key (not Cursor's subscription) |
+| LiteLLM proxy | ⚠ Partial | Same limitation as above |
+| HTTPS MITM proxy (mitmproxy) | ✗ | Requires system certificate install; Cursor may use certificate pinning |
+
+**Workaround for users with their own API key:** configure Cursor to use a custom endpoint in **Cursor Settings → Models → Custom** pointing to a local OpenAI-compatible proxy that emits OTel spans. This is not included in this extension today.
+
+This is a known gap — native Cursor AI observability requires Cursor to add OTel support to their platform.
 
 ---
 
