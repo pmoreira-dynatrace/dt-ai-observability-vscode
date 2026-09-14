@@ -17,6 +17,8 @@ processors:
       - { key: deployment.environment, value: demo,                action: upsert }
   # Copilot internal agent spans contain <environment_info>/<workspace_info> injected by VS Code.
   # We hide the prompt/completion content to avoid noise, but keep token attributes intact.
+  # Note: this condition matches only Copilot Chat spans (gen_ai.prompt as a JSON string).
+  # Claude Code spans use flattened attributes (gen_ai.prompt.0.content) and are unaffected.
   # Removing tokens from spans would cause chart/table discrepancy: the AI Obs chart reads from
   # the gen_ai.client.token.usage metric (unaffected by span transforms), while the table reads
   # span attributes — deleting span tokens makes table undercount vs the chart.
@@ -42,7 +44,7 @@ exporters:
 
 extensions:
   health_check:
-    endpoint: 0.0.0.0:13133
+    endpoint: 0.0.0.0:${env:HEALTH_PORT}
 
 service:
   telemetry:

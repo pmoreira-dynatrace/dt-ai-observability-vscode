@@ -230,13 +230,15 @@ def main():
         cost_usd    = event.get("cost_usd") or event.get("total_cost_usd")
 
         attrs = [
-            attr_s("gen_ai.system",          GEN_AI_SYSTEM),
-            attr_s("gen_ai.operation.name",  "chat"),
-            attr_s("gen_ai.request.model",   model),
-            attr_s("gen_ai.prompt",          as_messages("user",      prompt_text)),
-            attr_s("gen_ai.completion",      as_messages("assistant", completion)),
-            attr_s("claude.session_id",      session_id),
-            attr_d("claude.duration_ms",     round(dur_ms, 2)),
+            attr_s("gen_ai.system",               GEN_AI_SYSTEM),
+            attr_s("gen_ai.operation.name",       "chat"),
+            attr_s("gen_ai.request.model",        model),
+            attr_s("gen_ai.prompt.0.role",        "user"),
+            attr_s("gen_ai.prompt.0.content",     trunc(prompt_text)),
+            attr_s("gen_ai.completion.0.role",    "assistant"),
+            attr_s("gen_ai.completion.0.content", trunc(completion)),
+            attr_s("claude.session_id",           session_id),
+            attr_d("claude.duration_ms",          round(dur_ms, 2)),
         ] + custom_attrs
         if input_tok  is not None: attrs.append(attr_i("gen_ai.usage.input_tokens",  input_tok))
         if output_tok is not None: attrs.append(attr_i("gen_ai.usage.output_tokens", output_tok))

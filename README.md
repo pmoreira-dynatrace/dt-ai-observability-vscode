@@ -134,7 +134,9 @@ Replace `*` with your tenant ID, e.g.: `abc12345.live.dynatrace.com`
 | `4317` (TCP, localhost) | OTel Collector — OTLP gRPC receiver | Only accessible from localhost |
 | `13133` (TCP, localhost) | OTel Collector — health check endpoint | Used by the extension to verify the collector started correctly |
 
-> If port `4318` or `13133` is already in use on the machine (by another process), change the collector port in VS Code settings: `dynatraceAiObs.collectorPort`.
+> **Port conflicts:** If port `4318` or `13133` is already in use, change the respective port in VS Code settings:
+> - `dynatraceAiObs.collectorPort` — controls the OTLP receiver port (default `4318`)
+> - `dynatraceAiObs.healthCheckPort` — controls the health check port (default `13133`)
 
 **Optional (Windows only — Python installation):**
 
@@ -441,7 +443,8 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `dynatraceAiObs.endpoint` | `""` | Dynatrace OTLP endpoint |
 | `dynatraceAiObs.userEmail` | `""` | Developer email (appears in spans) |
 | `dynatraceAiObs.autoStart` | `true` | Auto-start collector when VS Code opens |
-| `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port |
+| `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port (receives traces from VS Code and Claude Code hook) |
+| `dynatraceAiObs.healthCheckPort` | `13133` | Collector health check port (change if 13133 is already in use) |
 | `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command) |
 
 ---
@@ -465,7 +468,8 @@ Then restart the terminal and open Cursor from it to inherit the variables.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Orange status bar after setup | Binary still downloading | Wait — it's ~100 MB on first run |
-| `curl localhost:13133` fails | Port 4318 or 13133 already in use | Change `dynatraceAiObs.collectorPort` in settings |
+| `curl localhost:13133` fails | Port 13133 already in use | Change `dynatraceAiObs.healthCheckPort` in settings |
+| Extension fails to start on port 4318 | Port 4318 already in use | Change `dynatraceAiObs.collectorPort` in settings |
 | No spans in Dynatrace | Invalid token or endpoint uses `.apps.` | Reconfigure via **Configurar Credenciais** |
 | `user.email` null in spans | Email not filled during setup | Reconfigure and add email |
 | Download fails | No access to `github.com` | Check proxy/firewall; allow `github.com` and `objects.githubusercontent.com` |

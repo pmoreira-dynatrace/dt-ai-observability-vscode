@@ -28,6 +28,7 @@ export class CollectorManager {
         const endpoint = config.get<string>('endpoint', '');
         const email = config.get<string>('userEmail', '');
         const port = config.get<number>('collectorPort', 4318);
+        const healthPort = config.get<number>('healthCheckPort', 13133);
 
         if (!token || !endpoint) {
             vscode.window.showErrorMessage(
@@ -61,6 +62,7 @@ export class CollectorManager {
                 DT_INGEST_TOKEN: token,
                 USER_EMAIL: email,
                 COLLECTOR_PORT: String(port),
+                HEALTH_PORT: String(healthPort),
             },
             stdio: ['ignore', 'pipe', 'pipe'],
         });
@@ -81,13 +83,13 @@ export class CollectorManager {
         });
 
         try {
-            await this.waitForHealth(port);
+            await this.waitForHealth(healthPort);
             this.statusBar.setRunning();
-            this.log(`Coletor pronto na porta ${port}.`);
+            this.log(`Coletor pronto na porta ${port} (health check: ${healthPort}).`);
         } catch {
-            this.log(`ERRO: health check falhou. Porta ${port} pode estar ocupada.`);
+            this.log(`ERRO: health check falhou. Porta ${healthPort} pode estar ocupada.`);
             vscode.window.showErrorMessage(
-                `Dynatrace AI Obs: não foi possível iniciar na porta ${port}.`,
+                `Dynatrace AI Obs: não foi possível iniciar (porta OTLP: ${port}, health: ${healthPort}).`,
                 'Ver Log'
             ).then(a => { if (a === 'Ver Log') this.outputChannel.show(); });
             await this.stop();
@@ -134,8 +136,7 @@ export class CollectorManager {
         this.outputChannel.appendLine(`[${new Date().toISOString()}] ${msg}`);
     }
 
-    private waitForHealth(port: number, timeoutMs = 15000): Promise<void> {
-        const healthPort = 13133;
+    private waitForHealth(healthPort: number, timeoutMs = 15000): Promise<void> {
         return new Promise((resolve, reject) => {
             const deadline = Date.now() + timeoutMs;
             const check = () => {
