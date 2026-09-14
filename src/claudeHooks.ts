@@ -12,9 +12,11 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const HOOK_SCRIPT_PATH = path.join(CLAUDE_DIR, 'otel-hook.py');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
+const HOOK_VERSION = '1.3.4';
 
 // Script Python embutido — sem dependências externas, só stdlib
 const HOOK_SCRIPT = `#!/usr/bin/env python3
+# hook-version: 1.3.4
 """
 Dynatrace AI Observability — Claude Code OTel Hook v2
 Captura: prompt, model, tokens, custo, duração total e tool calls (input+output).
@@ -290,6 +292,16 @@ function buildHookEntry() {
     return [{ hooks: [{ type: 'command', command: `${PYTHON_CMD} ${HOOK_SCRIPT_PATH}` }] }];
 }
 
+function getExistingHookVersion(): string {
+    try {
+        const content = fs.readFileSync(HOOK_SCRIPT_PATH, 'utf8');
+        const match = content.match(/^# hook-version: (.+)$/m);
+        return match?.[1]?.trim() || '';
+    } catch {
+        return '';
+    }
+}
+
 export function autoConfigureClaudeHooks(): void {
     log(`Verificando Claude Code em: ${CLAUDE_DIR}`);
 
@@ -299,14 +311,20 @@ export function autoConfigureClaudeHooks(): void {
     }
 
     const isFirstTime = !fs.existsSync(HOOK_SCRIPT_PATH);
+    const existingVersion = isFirstTime ? '' : getExistingHookVersion();
+    const isUpdate = !isFirstTime && existingVersion !== HOOK_VERSION;
 
     try {
         writeFiles();
-        log(`otel-hook.py atualizado em: ${HOOK_SCRIPT_PATH}`);
+        log(`otel-hook.py v${HOOK_VERSION} atualizado em: ${HOOK_SCRIPT_PATH}`);
         log(`settings.json atualizado em: ${SETTINGS_PATH}`);
         if (isFirstTime) {
             vscode.window.showInformationMessage(
                 '✓ Dynatrace AI Obs: hooks do Claude Code configurados. Reinicie o Claude Code para ativar.'
+            );
+        } else if (isUpdate) {
+            vscode.window.showInformationMessage(
+                `✓ Dynatrace AI Obs: hook do Claude Code atualizado (${existingVersion || 'anterior'} → ${HOOK_VERSION}). Reinicie o Claude Code para ativar.`
             );
         }
     } catch (err) {
@@ -333,12 +351,22 @@ function writeFiles(): void {
     writeAttrsFile();
 }
 
+function getSystemAttributes(): Record<string, string> {
+    const osMap: Record<string, string> = { darwin: 'macos', win32: 'windows', linux: 'linux' };
+    return {
+        'ide.name':    vscode.env.appName,
+        'ide.version': vscode.version,
+        'os.type':     osMap[process.platform] || process.platform,
+    };
+}
+
 export function writeAttrsFile(): void {
     try {
-        const attrs = vscode.workspace.getConfiguration('dynatraceAiObs').get<Record<string, string>>('customAttributes', {});
+        const userAttrs = vscode.workspace.getConfiguration('dynatraceAiObs').get<Record<string, string>>('customAttributes', {});
+        const merged = { ...getSystemAttributes(), ...userAttrs };
         fs.writeFileSync(
             path.join(CLAUDE_DIR, 'otel-attrs.json'),
-            JSON.stringify(attrs, null, 2),
+            JSON.stringify(merged, null, 2),
             'utf8'
         );
     } catch { /* silently skip if ~/.claude not available */ }

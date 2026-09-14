@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as https from 'https';
 import { CollectorManager } from './collector';
 import { StatusBarManager } from './statusBar';
 import { configureCopilotOtel } from './settings';
@@ -77,6 +78,44 @@ async function hasCredentials(context: vscode.ExtensionContext): Promise<boolean
     return !!(token && endpoint);
 }
 
+function validateDynatraceCredentials(endpoint: string, token: string): Promise<{ valid: boolean; error?: string }> {
+    return new Promise((resolve) => {
+        try {
+            const baseUrl = endpoint.replace(/\/api\/v2\/otlp\/?$/, '');
+            const lookupUrl = new URL(`${baseUrl}/api/v2/apiTokens/lookup`);
+            const body = JSON.stringify({ token });
+            const req = https.request({
+                hostname: lookupUrl.hostname,
+                path: lookupUrl.pathname,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Api-Token ${token}`,
+                    'Content-Length': Buffer.byteLength(body),
+                },
+            }, (res) => {
+                if (res.statusCode === 200) {
+                    resolve({ valid: true });
+                } else if (res.statusCode === 401) {
+                    resolve({ valid: false, error: 'Token inválido — verifique se o token está correto.' });
+                } else if (res.statusCode === 403) {
+                    resolve({ valid: false, error: 'Token sem os scopes necessários: openTelemetryTrace.ingest + metrics.ingest.' });
+                } else {
+                    resolve({ valid: false, error: `Endpoint respondeu HTTP ${res.statusCode} — verifique a URL.` });
+                }
+            });
+            req.on('error', (err) => {
+                resolve({ valid: false, error: `Não foi possível conectar ao Dynatrace: ${err.message}` });
+            });
+            req.setTimeout(8000, () => { req.destroy(); resolve({ valid: false, error: 'Timeout — verifique a URL e sua conexão.' }); });
+            req.write(body);
+            req.end();
+        } catch (err) {
+            resolve({ valid: false, error: `URL inválida: ${err}` });
+        }
+    });
+}
+
 async function runConfigureFlow(context: vscode.ExtensionContext) {
     const currentEndpoint = vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('endpoint', '');
 
@@ -108,6 +147,19 @@ async function runConfigureFlow(context: vscode.ExtensionContext) {
         }
     });
     if (!token) return;
+
+    const validation = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'Validando credenciais Dynatrace...' },
+        () => validateDynatraceCredentials(endpoint, token)
+    );
+    if (!validation.valid) {
+        const action = await vscode.window.showErrorMessage(
+            `Dynatrace AI Obs: ${validation.error}`,
+            'Corrigir',
+            'Salvar mesmo assim'
+        );
+        if (action !== 'Salvar mesmo assim') { return; }
+    }
 
     const currentEmail = vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('userEmail', '');
     const email = await vscode.window.showInputBox({

@@ -55,6 +55,7 @@ export class CollectorManager {
 
         this.statusBar.setStarting();
 
+        const osMap: Record<string, string> = { darwin: 'macos', win32: 'windows', linux: 'linux' };
         this.process = cp.spawn(binaryPath, ['--config', configPath], {
             env: {
                 ...process.env,
@@ -63,6 +64,9 @@ export class CollectorManager {
                 USER_EMAIL: email,
                 COLLECTOR_PORT: String(port),
                 HEALTH_PORT: String(healthPort),
+                IDE_NAME:    vscode.env.appName,
+                IDE_VERSION: vscode.version,
+                OS_TYPE:     osMap[process.platform] || process.platform,
             },
             stdio: ['ignore', 'pipe', 'pipe'],
         });

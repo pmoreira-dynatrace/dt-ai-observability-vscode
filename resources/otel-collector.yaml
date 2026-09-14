@@ -15,6 +15,9 @@ processors:
     attributes:
       - { key: user.email,             value: "${env:USER_EMAIL}", action: upsert }
       - { key: deployment.environment, value: demo,                action: upsert }
+      - { key: ide.name,    value: "${env:IDE_NAME}",    action: upsert }
+      - { key: ide.version, value: "${env:IDE_VERSION}",  action: upsert }
+      - { key: os.type,     value: "${env:OS_TYPE}",      action: upsert }
   # Copilot internal agent spans contain <environment_info>/<workspace_info> injected by VS Code.
   # We hide the prompt/completion content to avoid noise, but keep token attributes intact.
   # Note: this condition matches only Copilot Chat spans (gen_ai.prompt as a JSON string).
