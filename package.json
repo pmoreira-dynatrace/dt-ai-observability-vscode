@@ -56,6 +56,22 @@
       {
         "command": "dt-ai-obs.manageAttributes",
         "title": "Dynatrace AI Obs: Gerenciar Atributos Customizados"
+      },
+      {
+        "command": "dt-ai-obs.evalsConfigure",
+        "title": "Dynatrace AI Obs: Configurar Evals (dt-evals)"
+      },
+      {
+        "command": "dt-ai-obs.evalsRun",
+        "title": "Dynatrace AI Obs: Rodar Evals (ex.: Prompt Injection)"
+      },
+      {
+        "command": "dt-ai-obs.evalsValidate",
+        "title": "Dynatrace AI Obs: Validar Setup dos Evals"
+      },
+      {
+        "command": "dt-ai-obs.evalsStatus",
+        "title": "Dynatrace AI Obs: Ver Status dos Evals"
       }
     ],
     "configuration": {
@@ -93,6 +109,11 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "dynatraceAiObs.evalsEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Habilita o Dynatrace Evals (dt-evals) para avaliar spans gen_ai.* (ex.: Prompt Injection). Quando ativado, o CLI @dynatrace-oss/dt-evals \u00e9 instalado globalmente."
         }
       }
     }
