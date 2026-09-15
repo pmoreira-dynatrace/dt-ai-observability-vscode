@@ -12,17 +12,17 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const HOOK_SCRIPT_PATH = path.join(CLAUDE_DIR, 'otel-hook.py');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
-const HOOK_VERSION = '1.3.4';
+const HOOK_VERSION = '1.3.8';
 
 // Script Python embutido — sem dependências externas, só stdlib
 const HOOK_SCRIPT = `#!/usr/bin/env python3
-# hook-version: 1.3.4
+# hook-version: 1.3.8
 """
 Dynatrace AI Observability — Claude Code OTel Hook v2
 Captura: prompt, model, tokens, custo, duração total e tool calls (input+output).
 Requer: Python 3.6+ (sem dependências externas)
 """
-import sys, json, time, random, os, glob, urllib.request
+import sys, json, time, random, os, glob, urllib.request, threading
 
 COLLECTOR_URL = "http://localhost:4318/v1/traces"
 SERVICE_NAME  = "claude-code"
@@ -270,7 +270,9 @@ def main():
         json.dump(state, f)
 
 if __name__ == "__main__":
-    main()
+    t = threading.Thread(target=main, daemon=True)
+    t.start()
+    t.join(10)  # max 10s — prevents blocking Claude Code indefinitely
 `;
 
 function checkPython(): Promise<boolean> {
