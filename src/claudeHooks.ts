@@ -12,11 +12,11 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const HOOK_SCRIPT_PATH = path.join(CLAUDE_DIR, 'otel-hook.py');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
-const HOOK_VERSION = '1.3.9';
+const HOOK_VERSION = '1.4.0';
 
 // Script Python embutido — sem dependências externas, só stdlib
 const HOOK_SCRIPT = `#!/usr/bin/env python3
-# hook-version: 1.3.9
+# hook-version: 1.4.0
 """
 Dynatrace AI Observability — Claude Code OTel Hook v2
 Captura: prompt, model, tokens, custo, duração total e tool calls (input+output).
@@ -235,6 +235,7 @@ def main():
             attr_s("gen_ai.system",               GEN_AI_SYSTEM),
             attr_s("gen_ai.operation.name",       "chat"),
             attr_s("gen_ai.request.model",        model),
+            attr_s("gen_ai.conversation.id",      session_id),
             attr_s("gen_ai.prompt.0.role",        "user"),
             attr_s("gen_ai.prompt.0.content",     trunc(prompt_text)),
             attr_s("gen_ai.completion.0.role",    "assistant"),
