@@ -86,13 +86,40 @@ export class EvalsManager {
     /** Verifica se o CLI dt-evals já está instalado globalmente. */
     private isCliInstalled(): Promise<boolean> {
         return new Promise((resolve) => {
-            cp.exec('dt-evals --version', (err) => resolve(!err));
+            cp.exec('dt-evals --version', (err: cp.ExecException | null) => resolve(!err));
         });
+    }
+
+    /** Confere se o npm está disponível no PATH (dependência para instalar o CLI). */
+    private checkNpm(): Promise<string | undefined> {
+        return new Promise((resolve) => {
+            cp.exec('npm --version', (err: cp.ExecException | null, stdout: string) =>
+                resolve(err ? undefined : stdout.trim())
+            );
+        });
+    }
+
+    /** Heurística: erro de permissão (EACCES/EPERM) na instalação global do npm. */
+    private isPermissionError(text: string): boolean {
+        return /EACCES|EPERM|permission denied|not permitted|access is denied|operation not permitted/i.test(text);
     }
 
     /** Instala o CLI dt-evals globalmente via npm, com barra de progresso. */
     async install(): Promise<boolean> {
         if (!(await this.checkNode())) return false;
+
+        // npm é dependência para a instalação global — se faltar, avisa e para.
+        const npmVersion = await this.checkNpm();
+        if (!npmVersion) {
+            const action = await vscode.window.showErrorMessage(
+                'Dynatrace Evals: npm não encontrado no PATH. O npm (incluso no Node.js) é necessário para instalar o dt-evals.',
+                'Abrir nodejs.org'
+            );
+            if (action === 'Abrir nodejs.org') {
+                vscode.env.openExternal(vscode.Uri.parse('https://nodejs.org/'));
+            }
+            return false;
+        }
 
         if (await this.isCliInstalled()) {
             vscode.window.showInformationMessage('Dynatrace Evals (dt-evals) já está instalado.');
@@ -102,17 +129,33 @@ export class EvalsManager {
         return vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: 'Instalando Dynatrace Evals (dt-evals)...' },
             () => new Promise<boolean>((resolve) => {
-                cp.exec(`npm install -g ${DT_EVALS_PKG}`, (err, _stdout, stderr) => {
-                    if (err) {
-                        vscode.window.showErrorMessage(
-                            `Falha ao instalar dt-evals: ${stderr || err.message}. ` +
-                            'Verifique permissões do npm global ou instale manualmente com "npm install -g @dynatrace-oss/dt-evals".'
-                        );
-                        resolve(false);
-                    } else {
+                cp.exec(`npm install -g ${DT_EVALS_PKG}`, (err: cp.ExecException | null, _stdout: string, stderr: string) => {
+                    if (!err) {
                         vscode.window.showInformationMessage('✓ Dynatrace Evals (dt-evals) instalado com sucesso.');
                         resolve(true);
+                        return;
                     }
+
+                    const details = stderr || err.message;
+                    if (this.isPermissionError(details)) {
+                        // Máquina sem permissão para instalar pacote global.
+                        vscode.window.showErrorMessage(
+                            'Dynatrace Evals: sem permissão para instalar o pacote global (npm EACCES/EPERM). ' +
+                            'Sua máquina não permite "npm install -g". Peça ao seu admin ou configure um prefix de npm no seu usuário ' +
+                            '(ex.: "npm config set prefix ~/.npm-global" e adicione ao PATH). Alternativa: o comando "Rodar Evals" usa "npx" sem instalação global.',
+                            'Ver como resolver'
+                        ).then(a => {
+                            if (a === 'Ver como resolver') {
+                                vscode.env.openExternal(vscode.Uri.parse('https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally'));
+                            }
+                        });
+                    } else {
+                        vscode.window.showErrorMessage(
+                            `Dynatrace Evals: falha ao instalar — ${details}. ` +
+                            'Você pode instalar manualmente com "npm install -g @dynatrace-oss/dt-evals" ou usar "Rodar Evals" (via npx, sem instalação global).'
+                        );
+                    }
+                    resolve(false);
                 });
             })
         );
@@ -133,7 +176,9 @@ export class EvalsManager {
     /** Confere se há Node.js >= 20 disponível (exigência do dt-evals). */
     private async checkNode(): Promise<boolean> {
         const version = await new Promise<string | undefined>((resolve) => {
-            cp.exec('node --version', (err, stdout) => resolve(err ? undefined : stdout.trim()));
+            cp.exec('node --version', (err: cp.ExecException | null, stdout: string) =>
+                resolve(err ? undefined : stdout.trim())
+            );
         });
         if (!version) {
             const action = await vscode.window.showErrorMessage(
