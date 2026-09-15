@@ -4,9 +4,11 @@ import { CollectorManager } from './collector';
 import { StatusBarManager } from './statusBar';
 import { configureCopilotOtel } from './settings';
 import { configureClaudeHooks, removeClaudeHooks, autoConfigureClaudeHooks, setLogger, writeAttrsFile, manageCustomAttributes } from './claudeHooks';
+import { EvalsManager } from './evals';
 
 let collectorManager: CollectorManager;
 let statusBarManager: StatusBarManager;
+let evalsManager: EvalsManager;
 
 export async function activate(context: vscode.ExtensionContext) {
     statusBarManager = new StatusBarManager();
@@ -17,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
     setLogger((msg) => outputChannel.appendLine(`[${ts()}] ${msg}`));
 
     collectorManager = new CollectorManager(context, statusBarManager, outputChannel);
+    evalsManager = new EvalsManager(context);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('dt-ai-obs.start', () => collectorManager.start()),
@@ -29,6 +32,10 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('dt-ai-obs.configureClaudeHooks', configureClaudeHooks),
         vscode.commands.registerCommand('dt-ai-obs.removeClaudeHooks', removeClaudeHooks),
         vscode.commands.registerCommand('dt-ai-obs.manageAttributes', manageCustomAttributes),
+        vscode.commands.registerCommand('dt-ai-obs.evalsConfigure', () => evalsManager.configure()),
+        vscode.commands.registerCommand('dt-ai-obs.evalsRun', () => evalsManager.run()),
+        vscode.commands.registerCommand('dt-ai-obs.evalsValidate', () => evalsManager.validate()),
+        vscode.commands.registerCommand('dt-ai-obs.evalsStatus', () => evalsManager.status()),
         statusBarManager.statusBarItem
     );
 
@@ -65,6 +72,9 @@ export async function activate(context: vscode.ExtensionContext) {
             await runConfigureFlow(context);
         }
     }
+
+    // Pergunta de opt-in do Evals (uma única vez): "Deseja instalar o dt-evals?"
+    await evalsManager.maybePromptInstall();
 }
 
 export async function deactivate() {
