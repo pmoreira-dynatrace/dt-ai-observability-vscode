@@ -25,10 +25,20 @@ export class CollectorManager {
             const pid = parseInt(fs.readFileSync(this.pidFile, 'utf8').trim(), 10);
             if (!isNaN(pid)) {
                 process.kill(pid, 'SIGTERM');
-                this.log(`Processo anterior (PID ${pid}) finalizado.`);
+                this.log(`Processo anterior (PID ${pid}) finalizado via PID file.`);
             }
         } catch { /* process already gone or file missing */ }
         try { fs.unlinkSync(this.pidFile); } catch { /* ignore */ }
+    }
+
+    private killProcessOnPort(port: number): Promise<void> {
+        // Only kills if the process name contains "otelcol" — avoids killing unrelated processes
+        return new Promise((resolve) => {
+            const cmd = process.platform === 'win32'
+                ? `FOR /F "tokens=5" %P IN ('netstat -a -n -o ^| findstr :${port} ^| findstr LISTENING') DO FOR /F "tokens=1" %N IN ('tasklist /FI "PID eq %P" /NH ^| findstr otelcol') DO TaskKill.exe /PID %P /F`
+                : `lsof -ti tcp:${port} | while read pid; do ps -p $pid -o comm= | grep -q otelcol && kill -9 $pid; done 2>/dev/null; true`;
+            cp.exec(cmd, () => setTimeout(resolve, 400));
+        });
     }
 
     private writePid(pid: number): void {
@@ -43,6 +53,9 @@ export class CollectorManager {
             await this.stop();
         }
         this.killStalePid();
+        const config0 = vscode.workspace.getConfiguration('dynatraceAiObs');
+        await this.killProcessOnPort(config0.get<number>('collectorPort', 4318));
+        await this.killProcessOnPort(config0.get<number>('healthCheckPort', 13133));
 
         const token = await this.context.secrets.get('dt-ingest-token');
         const config = vscode.workspace.getConfiguration('dynatraceAiObs');
