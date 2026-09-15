@@ -12,11 +12,11 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const HOOK_SCRIPT_PATH = path.join(CLAUDE_DIR, 'otel-hook.py');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
-const HOOK_VERSION = '1.3.8';
+const HOOK_VERSION = '1.3.9';
 
 // Script Python embutido — sem dependências externas, só stdlib
 const HOOK_SCRIPT = `#!/usr/bin/env python3
-# hook-version: 1.3.8
+# hook-version: 1.3.9
 """
 Dynatrace AI Observability — Claude Code OTel Hook v2
 Captura: prompt, model, tokens, custo, duração total e tool calls (input+output).
@@ -40,7 +40,7 @@ def rand_span():  return f"{random.getrandbits(64):016x}"
 
 def get_model():
     try:
-        with open(SETTINGS_FILE) as f:
+        with open(SETTINGS_FILE, encoding='utf-8') as f:
             return json.load(f).get("model", "claude")
     except Exception:
         return os.environ.get("CLAUDE_MODEL", "claude")
@@ -48,7 +48,7 @@ def get_model():
 def read_custom_attrs():
     """Read custom attributes written by the VS Code extension."""
     try:
-        with open(os.path.expanduser("~/.claude/otel-attrs.json")) as f:
+        with open(os.path.expanduser("~/.claude/otel-attrs.json"), encoding='utf-8') as f:
             return json.load(f)
     except Exception:
         return {}
@@ -61,7 +61,7 @@ def read_last_assistant(session_id):
         files = glob.glob(pattern)
         if not files:
             return result
-        with open(files[0]) as f:
+        with open(files[0], encoding='utf-8') as f:
             for line in f:
                 try:
                     r = json.loads(line)
@@ -156,7 +156,7 @@ def main():
     state = {}
     if os.path.exists(state_file):
         try:
-            with open(state_file) as f:
+            with open(state_file, encoding='utf-8') as f:
                 state = json.load(f)
         except Exception:
             pass
@@ -174,7 +174,7 @@ def main():
         state["turn_span_id"]   = rand_span()
         state["prompt_text"]    = event.get("prompt", "")
         state["model"]          = get_model()
-        with open(state_file, "w") as f:
+        with open(state_file, "w", encoding='utf-8') as f:
             json.dump(state, f)
         sys.exit(0)
 
@@ -185,7 +185,7 @@ def main():
             "span_id":    rand_span(),
             "tool_input": trunc(event.get("tool_input", "")),
         }
-        with open(state_file, "w") as f:
+        with open(state_file, "w", encoding='utf-8') as f:
             json.dump(state, f)
         sys.exit(0)
 
@@ -209,7 +209,7 @@ def main():
         ] + custom_attrs
         send_spans([make_span(trace_id, span_id, f"claude.tool.{tool_name}",
                               start_ns, now_ns, attrs, parent_id)])
-        with open(state_file, "w") as f:
+        with open(state_file, "w", encoding='utf-8') as f:
             json.dump(state, f)
         sys.exit(0)
 
