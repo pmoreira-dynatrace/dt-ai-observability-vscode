@@ -18,7 +18,7 @@ VS Code / Cursor
 | GitHub Copilot Chat | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | Claude Code | ✓ | ✓ | ✓ | ✓ | ✓ (incl. cache) | ✓ with input/output |
 
-> **AI Obs "Prompts stream" note:** The Prompts stream tab in the AI & LLM Observability app currently only shows data from GitHub Copilot Chat (native Dynatrace integration). Claude Code data arrives via OTel and is fully visible in **Distributed Traces**, **DQL queries**, and **Notebooks**. See the [DQL Dashboard](#dql-dashboard-for-claude-code) section for equivalent queries.
+> **AI Obs "Prompts stream":** Claude Code spans appear in the Prompts stream tab alongside GitHub Copilot Chat. Input, Output, Model Version, Duration, and Token counts are populated automatically. **Known limitation:** the System Prompt field shows `-` — Claude Code does not expose its system prompt to hooks.
 
 ---
 
@@ -245,7 +245,7 @@ You should see:
 ```
 [...] [hooks] otel-hook.py atualizado em: ...
 [...] Iniciando OTel Collector...
-[...] Coletor pronto na porta 4318.
+[...] Coletor pronto na porta 4318 (health check: 13133).
 ```
 
 ---
@@ -309,7 +309,7 @@ Open the **AI Observability** app in your tenant:
 - **Explorer tab**: click on `claude-code` service to see request-level details, latency, and token usage per conversation turn.
 - **Distributed Traces**: full trace with span events containing prompt and completion text. Filter by `service.name = claude-code`.
 
-> **Prompts stream tab**: currently shows GitHub Copilot Chat only (native integration). Use the DQL queries below for equivalent Claude Code visibility.
+> **Prompts stream tab**: shows both GitHub Copilot Chat and Claude Code data. The System Prompt column shows `-` for Claude Code — this is a known limitation (Claude Code does not expose its system prompt to hooks).
 
 ### DQL queries
 
@@ -488,6 +488,7 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 | Claude Code model shows as "claude" (not full name) | Old spans before fix | Only affects historical spans; new spans show `claude-sonnet-4-6` etc. |
 | Custom attributes command not found | Extension not updated | Reinstall from latest VSIX |
 | Claude Code hooks not executing | Claude Code not restarted after hook setup | Close and reopen Claude Code |
+| System Prompt shows `-` in Prompts stream | Claude Code does not expose its system prompt to hooks | Known limitation — no fix available |
 
 ---
 
