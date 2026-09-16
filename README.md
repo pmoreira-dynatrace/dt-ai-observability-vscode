@@ -16,9 +16,11 @@ VS Code / Cursor
 | Source | Prompt | Response | Model | Duration | Tokens | Tool calls |
 |---|---|---|---|---|---|---|
 | GitHub Copilot Chat | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| Claude Code | ✓ | ✓ | ✓ | ✓ | ✓ (incl. cache) | ✓ with input/output |
+| Claude Code | opt-in¹ | opt-in¹ | ✓ | ✓ | ✓ (incl. cache) | ✓ with input/output |
 
-> **AI Obs "Prompts stream":** Claude Code spans appear in the Prompts stream tab alongside GitHub Copilot Chat. Input, Output, Model Version, Duration, and Token counts are populated automatically. **Known limitation:** the System Prompt field shows `-` — Claude Code does not expose its system prompt to hooks.
+> ¹ Prompt and response content are **not captured by default** (privacy). Enable via `dynatraceAiObs.capturePrompts: true` in VS Code settings.
+
+> **AI Obs "Prompts stream":** Claude Code spans appear in the Prompts stream tab alongside GitHub Copilot Chat. Model Version, Duration, and Token counts are always populated. **Input/Output fields require `dynatraceAiObs.capturePrompts: true`** (disabled by default for privacy). **Known limitation:** System Prompt shows `-` — Claude Code does not expose its system prompt to hooks.
 
 ---
 
@@ -309,7 +311,7 @@ Open the **AI Observability** app in your tenant:
 - **Explorer tab**: click on `claude-code` service to see request-level details, latency, and token usage per conversation turn.
 - **Distributed Traces**: full trace with span events containing prompt and completion text. Filter by `service.name = claude-code`.
 
-> **Prompts stream tab**: shows both GitHub Copilot Chat and Claude Code data. The System Prompt column shows `-` for Claude Code — this is a known limitation (Claude Code does not expose its system prompt to hooks).
+> **Prompts stream tab**: shows both GitHub Copilot Chat and Claude Code data. Input/Output columns for Claude Code require `dynatraceAiObs.capturePrompts: true` in VS Code settings (disabled by default). System Prompt shows `-` for Claude Code — known limitation.
 
 ### DQL queries
 
@@ -405,10 +407,13 @@ fetch spans, from:now()-1h
 ```dql
 fetch spans, from:now()-1h
 | filter service.name == "copilot-chat"
+| filter isNotNull(`gen_ai.conversation.id`)
 | fields timestamp, span.name, gen_ai.request.model,
          gen_ai.usage.input_tokens, gen_ai.usage.output_tokens
 | sort timestamp desc
 ```
+
+> The `isNotNull(gen_ai.conversation.id)` filter excludes Copilot's internal background calls (e.g. orchestration using `gpt-4o-mini`) that have no conversation context and are covered by the flat Copilot subscription — not billed per token to you.
 
 ---
 
@@ -443,6 +448,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `dynatraceAiObs.endpoint` | `""` | Dynatrace OTLP endpoint |
 | `dynatraceAiObs.userEmail` | `""` | Developer email (appears in spans) |
 | `dynatraceAiObs.autoStart` | `true` | Auto-start collector when VS Code opens |
+| `dynatraceAiObs.capturePrompts` | `false` | Send prompt and response content in spans (Input/Output columns in Prompts stream). Disabled by default for privacy. |
 | `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port (receives traces from VS Code and Claude Code hook) |
 | `dynatraceAiObs.healthCheckPort` | `13133` | Collector health check port (change if 13133 is already in use) |
 | `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command) |
@@ -535,7 +541,7 @@ vscode-dt-ai-observability/
 
 ## Privacy and security
 
-- **Prompt and response capture**: Claude Code captures both the user prompt and AI response text by default. This can be disabled by running **Dynatrace AI Obs: Remover Hooks do Claude Code**.
+- **Prompt and response capture**: disabled by default (`dynatraceAiObs.capturePrompts: false`). Enable in VS Code settings to populate the Input/Output columns in the Prompts stream. When disabled, only metadata is captured (model, duration, token counts, tool calls). To stop all capture, use **Dynatrace AI Obs: Remover Hooks do Claude Code**.
 - **Token stored in OS keychain**: VS Code SecretStorage is backed by the OS keychain (Keychain on macOS, Credential Manager on Windows, libsecret on Linux) — never stored in plain text or `settings.json`.
 - **Collector makes outbound HTTPS only**: The local collector only connects outbound to your Dynatrace tenant. No public port is exposed.
 - **Verifiable binary**: Downloaded directly from [open-telemetry/opentelemetry-collector-releases](https://github.com/open-telemetry/opentelemetry-collector-releases).

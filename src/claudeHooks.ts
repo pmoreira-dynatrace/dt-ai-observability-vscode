@@ -12,11 +12,11 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const HOOK_SCRIPT_PATH = path.join(CLAUDE_DIR, 'otel-hook.py');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
-const HOOK_VERSION = '1.4.1';
+const HOOK_VERSION = '1.5.1';
 
 // Script Python embutido — sem dependências externas, só stdlib
 const HOOK_SCRIPT = `#!/usr/bin/env python3
-# hook-version: 1.4.1
+# hook-version: 1.5.1
 """
 Dynatrace AI Observability — Claude Code OTel Hook v2
 Captura: prompt, model, tokens, custo, duração total e tool calls (input+output).
@@ -45,13 +45,18 @@ def get_model():
     except Exception:
         return os.environ.get("CLAUDE_MODEL", "claude")
 
-def read_custom_attrs():
-    """Read custom attributes written by the VS Code extension."""
+def read_otel_config():
+    """Read custom attributes and config written by the VS Code extension.
+    Returns (attrs_dict, capture_prompts_bool).
+    Reserved keys prefixed with '_' are extracted and not added as span attributes.
+    """
     try:
         with open(os.path.expanduser("~/.claude/otel-attrs.json"), encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+        capture_prompts = data.pop("_capture_prompts", "false").lower() == "true"
+        return data, capture_prompts
     except Exception:
-        return {}
+        return {}, False
 
 def read_last_assistant(session_id):
     """Read model, usage and last text response from the Claude Code session JSONL."""
@@ -166,7 +171,8 @@ def main():
 
     trace_id    = state["trace_id"]
     now_ns      = int(time.time() * 1e9)
-    custom_attrs = [attr_s(k, v) for k, v in read_custom_attrs().items()]
+    raw_attrs, capture_prompts = read_otel_config()
+    custom_attrs = [attr_s(k, v) for k, v in raw_attrs.items()]
 
     # ── UserPromptSubmit: gravar início da conversa ──────────────────────────
     if hook_event == "UserPromptSubmit":
@@ -232,28 +238,32 @@ def main():
         cost_usd    = event.get("cost_usd") or event.get("total_cost_usd")
 
         attrs = [
-            attr_s("gen_ai.system",               GEN_AI_SYSTEM),
-            attr_s("gen_ai.operation.name",       "chat"),
-            attr_s("gen_ai.request.model",        model),
-            attr_s("gen_ai.response.model",       model),
-            attr_s("gen_ai.conversation.id",      session_id),
-            attr_s("gen_ai.prompt.0.role",        "user"),
-            attr_s("gen_ai.prompt.0.content",     trunc(prompt_text)),
-            attr_s("gen_ai.completion.0.role",    "assistant"),
-            attr_s("gen_ai.completion.0.content", trunc(completion)),
-            attr_s("claude.session_id",           session_id),
-            attr_d("claude.duration_ms",          round(dur_ms, 2)),
+            attr_s("gen_ai.system",          GEN_AI_SYSTEM),
+            attr_s("gen_ai.operation.name",  "chat"),
+            attr_s("gen_ai.request.model",   model),
+            attr_s("gen_ai.response.model",  model),
+            attr_s("gen_ai.conversation.id", session_id),
+            attr_s("claude.session_id",      session_id),
+            attr_d("claude.duration_ms",     round(dur_ms, 2)),
         ] + custom_attrs
+        if capture_prompts:
+            attrs += [
+                attr_s("gen_ai.prompt.0.role",        "user"),
+                attr_s("gen_ai.prompt.0.content",     trunc(prompt_text)),
+                attr_s("gen_ai.completion.0.role",    "assistant"),
+                attr_s("gen_ai.completion.0.content", trunc(completion)),
+            ]
         if input_tok  is not None: attrs.append(attr_i("gen_ai.usage.input_tokens",  input_tok))
         if output_tok is not None: attrs.append(attr_i("gen_ai.usage.output_tokens", output_tok))
         if cost_usd   is not None: attrs.append(attr_d("gen_ai.usage.cost_usd",      cost_usd))
 
-        # Span events no formato OTel GenAI — necessário para o app AI Observability exibir Prompt trace
+        # Span events com conteúdo — enviados apenas se capture_prompts estiver habilitado
         events = []
-        if prompt_text:
-            events.append(content_event("gen_ai.content.prompt",     "gen_ai.prompt",     "user",      prompt_text, start_ns))
-        if completion:
-            events.append(content_event("gen_ai.content.completion",  "gen_ai.completion", "assistant", completion,  now_ns))
+        if capture_prompts:
+            if prompt_text:
+                events.append(content_event("gen_ai.content.prompt",    "gen_ai.prompt",     "user",      prompt_text, start_ns))
+            if completion:
+                events.append(content_event("gen_ai.content.completion", "gen_ai.completion", "assistant", completion,  now_ns))
 
         # Span name "chat {model}" segue a convenção OTel GenAI — reconhecida pelo app AI Observability
         # kind=3 (CLIENT) identifica chamadas LLM no padrão GenAI semântico
@@ -366,8 +376,14 @@ function getSystemAttributes(): Record<string, string> {
 
 export function writeAttrsFile(): void {
     try {
-        const userAttrs = vscode.workspace.getConfiguration('dynatraceAiObs').get<Record<string, string>>('customAttributes', {});
-        const merged = { ...getSystemAttributes(), ...userAttrs };
+        const cfg = vscode.workspace.getConfiguration('dynatraceAiObs');
+        const userAttrs = cfg.get<Record<string, string>>('customAttributes', {});
+        const capturePrompts = cfg.get<boolean>('capturePrompts', false);
+        const merged = {
+            ...getSystemAttributes(),
+            '_capture_prompts': String(capturePrompts),
+            ...userAttrs,
+        };
         fs.writeFileSync(
             path.join(CLAUDE_DIR, 'otel-attrs.json'),
             JSON.stringify(merged, null, 2),

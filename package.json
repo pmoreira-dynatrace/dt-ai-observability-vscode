@@ -2,7 +2,7 @@
   "name": "dt-ai-observability",
   "displayName": "Dynatrace AI Observability",
   "description": "Coleta traces de uso de AI (GitHub Copilot, Claude Code) e envia para o Dynatrace via OpenTelemetry.",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "publisher": "dynatrace",
   "repository": {
     "type": "git",
@@ -101,6 +101,11 @@
           "type": "number",
           "default": 13133,
           "description": "Porta HTTP do health check do coletor local. Altere se 13133 estiver ocupada por outro processo."
+        },
+        "dynatraceAiObs.capturePrompts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enviar conteúdo de prompts e respostas nos spans (campos Input/Output no Prompts stream). Desabilitado por padrão para privacidade."
         },
         "dynatraceAiObs.customAttributes": {
           "type": "object",
