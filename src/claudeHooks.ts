@@ -303,7 +303,14 @@ function readSettings(): Record<string, unknown> {
 }
 
 function buildHookEntry() {
-    return [{ hooks: [{ type: 'command', command: `${PYTHON_CMD} ${HOOK_SCRIPT_PATH}` }] }];
+    // Forward slashes on Windows: Python accepts them and avoids backslash escape issues in JSON.
+    // Shell-level fallback (|| true / & exit /b 0): if the script is missing (e.g. removed by AV
+    // or left over from an install in another IDE), the hook exits 0 and never blocks Claude Code.
+    const scriptPath = HOOK_SCRIPT_PATH.replace(/\\/g, '/');
+    const cmd = process.platform === 'win32'
+        ? `python "${scriptPath}" & exit /b 0`
+        : `${PYTHON_CMD} "${scriptPath}" || true`;
+    return [{ hooks: [{ type: 'command', command: cmd }] }];
 }
 
 function getExistingHookVersion(): string {
@@ -313,6 +320,27 @@ function getExistingHookVersion(): string {
         return match?.[1]?.trim() || '';
     } catch {
         return '';
+    }
+}
+
+export function watchForClaudeDir(): void {
+    // If ~/.claude doesn't exist yet (Claude Code installed after this extension),
+    // watch the home directory and configure hooks as soon as Claude Code creates it.
+    if (fs.existsSync(CLAUDE_DIR)) { return; }
+    log('~/.claude não existe ainda — aguardando Claude Code criar o diretório…');
+    const homeDir = path.dirname(CLAUDE_DIR);
+    let watcher: fs.FSWatcher | undefined;
+    try {
+        watcher = fs.watch(homeDir, (_, filename) => {
+            if (filename === '.claude' && fs.existsSync(CLAUDE_DIR)) {
+                watcher?.close();
+                log('~/.claude detectado — configurando hooks automaticamente.');
+                // Small delay so Claude Code finishes initializing the directory
+                setTimeout(() => autoConfigureClaudeHooks(), 2000);
+            }
+        });
+    } catch {
+        // If watching fails (e.g. permissions), silently ignore
     }
 }
 
@@ -327,6 +355,8 @@ export function autoConfigureClaudeHooks(): void {
     const isFirstTime = !fs.existsSync(HOOK_SCRIPT_PATH);
     const existingVersion = isFirstTime ? '' : getExistingHookVersion();
     const isUpdate = !isFirstTime && existingVersion !== HOOK_VERSION;
+    // File missing even though it was set up before (e.g. removed by antivirus)
+    const isMissing = !isFirstTime && !fs.existsSync(HOOK_SCRIPT_PATH);
 
     try {
         writeFiles();
@@ -336,6 +366,10 @@ export function autoConfigureClaudeHooks(): void {
             vscode.window.showInformationMessage(
                 '✓ Dynatrace AI Obs: hooks do Claude Code configurados. Reinicie o Claude Code para ativar.'
             );
+        } else if (isMissing) {
+            vscode.window.showWarningMessage(
+                '⚠ Dynatrace AI Obs: otel-hook.py estava ausente e foi recriado. Se o problema persistir, verifique se o antivírus não está removendo o arquivo em ~/.claude/otel-hook.py.'
+            );
         } else if (isUpdate) {
             vscode.window.showInformationMessage(
                 `✓ Dynatrace AI Obs: hook do Claude Code atualizado (${existingVersion || 'anterior'} → ${HOOK_VERSION}). Reinicie o Claude Code para ativar.`
@@ -344,7 +378,7 @@ export function autoConfigureClaudeHooks(): void {
     } catch (err) {
         log(`ERRO ao configurar hooks: ${err}`);
         vscode.window.showWarningMessage(
-            `Dynatrace AI Obs: não foi possível configurar hooks do Claude Code — ${err}`
+            `Dynatrace AI Obs: não foi possível configurar hooks do Claude Code — ${err}. Verifique permissões em ${CLAUDE_DIR}.`
         );
     }
 }
