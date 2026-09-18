@@ -12,11 +12,11 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const HOOK_SCRIPT_PATH = path.join(CLAUDE_DIR, 'otel-hook.py');
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json');
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
-const HOOK_VERSION = '1.5.1';
+const HOOK_VERSION = '1.6.2';
 
 // Script Python embutido — sem dependências externas, só stdlib
 const HOOK_SCRIPT = `#!/usr/bin/env python3
-# hook-version: 1.5.1
+# hook-version: 1.6.2
 """
 Dynatrace AI Observability — Claude Code OTel Hook v2
 Captura: prompt, model, tokens, custo, duração total e tool calls (input+output).
@@ -304,11 +304,11 @@ function readSettings(): Record<string, unknown> {
 
 function buildHookEntry() {
     // Forward slashes on Windows: Python accepts them and avoids backslash escape issues in JSON.
-    // Shell-level fallback (|| true / & exit /b 0): if the script is missing (e.g. removed by AV
+    // Shell-level fallback (|| true / || exit 0): if the script is missing (e.g. removed by AV
     // or left over from an install in another IDE), the hook exits 0 and never blocks Claude Code.
     const scriptPath = HOOK_SCRIPT_PATH.replace(/\\/g, '/');
     const cmd = process.platform === 'win32'
-        ? `python "${scriptPath}" & exit /b 0`
+        ? `python "${scriptPath}" || exit 0`
         : `${PYTHON_CMD} "${scriptPath}" || true`;
     return [{ hooks: [{ type: 'command', command: cmd }] }];
 }
