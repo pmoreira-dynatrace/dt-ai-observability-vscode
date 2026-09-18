@@ -38,21 +38,21 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     };
 
-    const openPanel = (tab?: import('./configPanel').PanelTab) =>
-        ConfigPanel.open(context, onConfigSaved, collectorManager, evalsManager, tab);
-
     context.subscriptions.push(
         vscode.commands.registerCommand('dt-ai-obs.start', () => collectorManager.start()),
         vscode.commands.registerCommand('dt-ai-obs.stop', () => collectorManager.stop()),
-        vscode.commands.registerCommand('dt-ai-obs.configure', () => openPanel('Config')),
-        vscode.commands.registerCommand('dt-ai-obs.status', () => openPanel('Coletor')),
+        vscode.commands.registerCommand('dt-ai-obs.configure', () => ConfigPanel.open(context, onConfigSaved)),
+        vscode.commands.registerCommand('dt-ai-obs.status', () => {
+            const version = context.extension.packageJSON.version as string;
+            collectorManager.showStatus(version);
+        }),
         vscode.commands.registerCommand('dt-ai-obs.configureClaudeHooks', configureClaudeHooks),
         vscode.commands.registerCommand('dt-ai-obs.removeClaudeHooks', removeClaudeHooks),
-        vscode.commands.registerCommand('dt-ai-obs.manageAttributes', () => openPanel('Config')),
-        vscode.commands.registerCommand('dt-ai-obs.evalsConfigure', () => openPanel('Evals')),
-        vscode.commands.registerCommand('dt-ai-obs.evalsRun', () => openPanel('Evals')),
-        vscode.commands.registerCommand('dt-ai-obs.evalsValidate', () => openPanel('Evals')),
-        vscode.commands.registerCommand('dt-ai-obs.evalsStatus', () => openPanel('Evals')),
+        vscode.commands.registerCommand('dt-ai-obs.manageAttributes', manageCustomAttributes),
+        vscode.commands.registerCommand('dt-ai-obs.evalsConfigure', () => evalsManager.configure()),
+        vscode.commands.registerCommand('dt-ai-obs.evalsRun', () => evalsManager.run()),
+        vscode.commands.registerCommand('dt-ai-obs.evalsValidate', () => evalsManager.validate()),
+        vscode.commands.registerCommand('dt-ai-obs.evalsStatus', () => evalsManager.status()),
         statusBarManager.statusBarItem
     );
 
@@ -84,7 +84,7 @@ export async function activate(context: vscode.ExtensionContext) {
             'Depois'
         );
         if (action === 'Configurar Agora') {
-            ConfigPanel.open(context, onConfigSaved, collectorManager, evalsManager);
+            ConfigPanel.open(context, onConfigSaved);
         }
     }
 
