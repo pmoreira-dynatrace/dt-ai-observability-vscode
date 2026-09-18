@@ -639,7 +639,7 @@ export class ConfigPanel {
 
   function renderCollectorLog(scrollToBottom) {
     var box = document.getElementById('logBox');
-    box.textContent = collectorLogLines.join('\n');
+    box.textContent = collectorLogLines.join(String.fromCharCode(10));
     if (scrollToBottom) { box.scrollTop = box.scrollHeight; }
   }
 
