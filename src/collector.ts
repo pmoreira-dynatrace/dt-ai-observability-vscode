@@ -12,12 +12,33 @@ export class CollectorManager {
     private readonly statusBar: StatusBarManager;
     private readonly outputChannel: vscode.OutputChannel;
     private readonly pidFile: string;
+    private logBuffer: string[] = [];
+    private logLineListener?: (line: string) => void;
+    private statusListener?: (running: boolean) => void;
 
     constructor(context: vscode.ExtensionContext, statusBar: StatusBarManager, outputChannel: vscode.OutputChannel) {
         this.context = context;
         this.statusBar = statusBar;
         this.outputChannel = outputChannel;
         this.pidFile = path.join(context.globalStorageUri.fsPath, 'otelcol.pid');
+    }
+
+    setLogLineListener(fn: ((line: string) => void) | undefined): void {
+        this.logLineListener = fn;
+    }
+
+    setStatusListener(fn: ((running: boolean) => void) | undefined): void {
+        this.statusListener = fn;
+    }
+
+    getLogBuffer(): string[] {
+        return [...this.logBuffer];
+    }
+
+    private pushLog(line: string): void {
+        this.logBuffer.push(line);
+        if (this.logBuffer.length > 300) { this.logBuffer.shift(); }
+        this.logLineListener?.(line);
     }
 
     private killStalePid(): void {
@@ -107,14 +128,23 @@ export class CollectorManager {
             this.writePid(this.process.pid);
         }
 
-        this.process.stdout?.on('data', (d: Buffer) => this.outputChannel.append(d.toString()));
-        this.process.stderr?.on('data', (d: Buffer) => this.outputChannel.append(d.toString()));
+        this.process.stdout?.on('data', (d: Buffer) => {
+            const text = d.toString();
+            this.outputChannel.append(text);
+            text.split('\n').forEach(l => { if (l.trim()) { this.pushLog(l); } });
+        });
+        this.process.stderr?.on('data', (d: Buffer) => {
+            const text = d.toString();
+            this.outputChannel.append(text);
+            text.split('\n').forEach(l => { if (l.trim()) { this.pushLog(l); } });
+        });
 
         this.process.on('exit', (code) => {
             this.log(`Coletor parou (código: ${code})`);
             this.process = undefined;
             try { fs.unlinkSync(this.pidFile); } catch { /* ignore */ }
             this.statusBar.setStopped();
+            this.statusListener?.(false);
             if (code !== 0 && code !== null) {
                 vscode.window.showWarningMessage(
                     `Dynatrace AI Obs: coletor parou inesperadamente (código ${code}).`,
@@ -135,6 +165,7 @@ export class CollectorManager {
                 return;
             }
             this.statusBar.setRunning();
+            this.statusListener?.(true);
             this.log(`Coletor pronto na porta ${port} (health check: ${healthPort}).`);
         } catch {
             this.log(`ERRO: health check falhou. Porta ${healthPort} pode estar ocupada.`);
@@ -148,11 +179,19 @@ export class CollectorManager {
 
     async stop(): Promise<void> {
         if (this.process) {
-            this.process.kill('SIGTERM');
+            const proc = this.process;
             this.process = undefined;
+            // Wait for the process to actually exit (up to 3s) before returning,
+            // so the next start() doesn't race for the same ports.
+            await new Promise<void>((resolve) => {
+                const timeout = setTimeout(() => { proc.kill('SIGKILL'); resolve(); }, 3000);
+                proc.once('exit', () => { clearTimeout(timeout); resolve(); });
+                proc.kill('SIGTERM');
+            });
             this.log('Coletor parado manualmente.');
         }
         this.statusBar.setStopped();
+        this.statusListener?.(false);
     }
 
     isRunning(): boolean {
@@ -213,7 +252,9 @@ export class CollectorManager {
     }
 
     private log(msg: string): void {
-        this.outputChannel.appendLine(`[${new Date().toISOString()}] ${msg}`);
+        const line = `[${new Date().toISOString()}] ${msg}`;
+        this.outputChannel.appendLine(line);
+        this.pushLog(line);
     }
 
     private waitForHealth(healthPort: number, timeoutMs = 15000): Promise<void> {

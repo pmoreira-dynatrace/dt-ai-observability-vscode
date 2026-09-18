@@ -10,7 +10,7 @@ processors:
   batch:
     timeout: 5s
     send_batch_size: 512
-  cumulativetodelta: {}
+  cumulative_to_delta: {}
   resource:
     attributes:
       - { key: user.email,             value: "${env:USER_EMAIL}", action: upsert }
@@ -39,7 +39,7 @@ processors:
 exporters:
   debug:
     verbosity: normal
-  otlphttp/dynatrace:
+  otlp_http/dynatrace:
     endpoint: "${env:DT_OTLP_ENDPOINT}"
     headers:
       Authorization: "Api-Token ${env:DT_INGEST_TOKEN}"
@@ -58,8 +58,8 @@ service:
     traces:
       receivers:  [otlp]
       processors: [transform/copilot_internal, batch, resource]
-      exporters:  [debug, otlphttp/dynatrace]
+      exporters:  [debug, otlp_http/dynatrace]
     metrics:
       receivers:  [otlp]
-      processors: [cumulativetodelta, batch, resource]
-      exporters:  [otlphttp/dynatrace]
+      processors: [cumulative_to_delta, batch, resource]
+      exporters:  [otlp_http/dynatrace]
