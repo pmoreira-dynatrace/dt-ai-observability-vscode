@@ -195,29 +195,60 @@ code --install-extension dt-ai-observability.vsix
 
 ### Step 3 — Configure credentials
 
-On first launch a prompt appears. Click **Configurar Agora** and fill in three fields:
+On first launch, a prompt appears. Click **Configurar Agora** to open the unified management panel. You can reopen it at any time with `Cmd+Shift+P` → **Dynatrace AI Obs: Configurar Credenciais**.
+
+#### Configuration tab
+
+The **Configurações** tab contains credentials, privacy controls, local ports, and custom attributes in one place.
 
 | Field | Example | Notes |
 |---|---|---|
-| OTLP Endpoint | `https://abc12345.live.dynatrace.com/api/v2/otlp` | Use `.live.`, not `.apps.` |
+| Tenant ID | `abc12345` | Recommended; the extension builds the OTLP URL automatically |
+| OTLP Endpoint | `https://abc12345.live.dynatrace.com/api/v2/otlp` | Advanced mode; use `.live.`, not `.apps.` |
 | API Token | `dt0c01.XXXXXXXXXX...` | Must start with `dt0c01.` |
 | Email (optional) | `dev@company.com` | Appears in spans to identify the developer |
 
-1. Informe o **OTLP Endpoint**:
+**Tenant ID mode (recommended)**
 
-   ![Configurar OTLP Endpoint](docs/images/config-01-endpoint.png)
+Enter only the tenant identifier. The generated OTLP endpoint is shown immediately below the field. The API token remains protected in the OS keychain, while the email identifies the developer in reports.
 
-2. Informe o **API Token**:
+![Configuration tab using Tenant ID mode, prompt capture controls, ports, and custom attributes](docs/images/panel-01-settings-tenant.png)
 
-   ![Configurar API Token](docs/images/config-02-token.png)
+The highlighted **Coleta** area controls data privacy. Enabling **Capturar conteúdo de prompts e respostas** unlocks Dynatrace Evals; when disabled, only metadata such as model, duration, tokens, and tool calls is collected.
 
-3. Informe o **Email** (opcional):
+**Full OTLP endpoint mode**
 
-   ![Configurar Email](docs/images/config-03-email.png)
+Choose **OTLP Endpoint completo** when using a custom or non-standard endpoint. Enter the complete `/api/v2/otlp` URL and verify that the hostname uses `.live.dynatrace.com`, never `.apps.dynatrace.com`.
+
+![Configuration tab using the full Dynatrace OTLP endpoint mode](docs/images/panel-02-settings-otlp-endpoint.png)
+
+Use **Validar credenciais** to test the endpoint and token before saving. **Salvar configurações** applies the values and starts or offers to restart the collector when required.
+
+#### Collector tab
+
+The **Coletor** tab provides day-to-day operational control without leaving the panel:
+
+- The status indicator shows whether the local OpenTelemetry Collector is running.
+- **Iniciar**, **Parar**, and **Reiniciar** control the managed collector process.
+- The live log keeps the latest 300 lines and follows new output while you are near the bottom.
+- **Atualizar**, **Ir ao fim**, and **Limpar** help inspect startup, health checks, and export errors.
+
+![Collector tab showing running status, process controls, and live OpenTelemetry logs](docs/images/panel-03-collector.png)
+
+#### Evals tab
+
+The **Evals** tab centralizes the `@dynatrace-oss/dt-evals` workflow. Prompt capture must be enabled in **Configurações** before Evals can be activated; both toggles stay synchronized.
+
+- **Instalar dt-evals** installs the CLI.
+- **Abrir wizard de configuração** connects the tenant and configures the LLM judge.
+- **Rodar Evals** selects evaluators, time range, sample size, and execution mode.
+- **Validar setup** checks configuration and connectivity.
+
+Interactive actions open in the integrated terminal so progress and prompts remain visible.
+
+![Evals tab showing the prompt capture requirement and available evaluation actions](docs/images/panel-04-evals.png)
 
 The token is stored in the **OS keychain** via VS Code SecretStorage — never in plain text.
-
-To reconfigure: `Cmd+Shift+P` → **Dynatrace AI Obs: Configurar Credenciais**
 
 ### Step 4 — First-time binary download
 
@@ -438,6 +469,10 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `Dynatrace AI Obs: Gerenciar Atributos Customizados` | Add or remove custom span attributes via Quick Pick UI |
 | `Dynatrace AI Obs: Configurar Hooks do Claude Code` | Set up Claude Code hooks manually |
 | `Dynatrace AI Obs: Remover Hooks do Claude Code` | Remove Claude Code hooks |
+| `Dynatrace AI Obs: Configurar Evals (dt-evals)` | Open the interactive Evals configuration wizard |
+| `Dynatrace AI Obs: Rodar Evals` | Select evaluators and run an evaluation |
+| `Dynatrace AI Obs: Validar Setup dos Evals` | Validate the Evals configuration and connectivity |
+| `Dynatrace AI Obs: Ver Status dos Evals` | Show the resolved Evals configuration and status |
 
 ---
 
@@ -452,6 +487,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port (receives traces from VS Code and Claude Code hook) |
 | `dynatraceAiObs.healthCheckPort` | `13133` | Collector health check port (change if 13133 is already in use) |
 | `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command) |
+| `dynatraceAiObs.evalsEnabled` | `false` | Enable Dynatrace Evals; requires prompt capture |
 
 ---
 
@@ -527,6 +563,8 @@ vscode-dt-ai-observability/
 │   ├── collector.ts      — OTel Collector process lifecycle
 │   ├── downloader.ts     — platform detection, binary download and cache
 │   ├── claudeHooks.ts    — Claude Code hook script (Python) + auto-install
+│   ├── configPanel.ts    — three-tab configuration and operations webview
+│   ├── evals.ts          — dt-evals installation and terminal workflows
 │   ├── settings.ts       — GitHub Copilot OTel settings auto-config
 │   └── statusBar.ts      — VS Code status bar indicator
 ├── resources/
