@@ -161,6 +161,18 @@ export class EvalsManager {
         );
     }
 
+    /** Abre a instalação no terminal para que o usuário acompanhe a saída. */
+    async installInTerminal(): Promise<void> {
+        if (!(await this.checkNode())) return;
+        if (!(await this.checkNpm())) {
+            vscode.window.showErrorMessage('Dynatrace Evals: npm não encontrado no PATH.');
+            return;
+        }
+        const term = this.getTerminal();
+        term.show();
+        term.sendText(`npm install -g ${DT_EVALS_PKG}`);
+    }
+
     /** Deriva a environmentUrl (.live.) a partir do endpoint OTLP configurado. */
     private getEnvironmentUrl(): string {
         const endpoint = vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('endpoint', '');

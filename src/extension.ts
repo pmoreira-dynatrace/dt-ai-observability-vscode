@@ -41,7 +41,9 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('dt-ai-obs.start', () => collectorManager.start()),
         vscode.commands.registerCommand('dt-ai-obs.stop', () => collectorManager.stop()),
-        vscode.commands.registerCommand('dt-ai-obs.configure', () => ConfigPanel.open(context, onConfigSaved)),
+        vscode.commands.registerCommand('dt-ai-obs.configure', () =>
+            ConfigPanel.open(context, onConfigSaved, collectorManager, evalsManager)
+        ),
         vscode.commands.registerCommand('dt-ai-obs.status', () => {
             const version = context.extension.packageJSON.version as string;
             collectorManager.showStatus(version);
@@ -84,7 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
             'Depois'
         );
         if (action === 'Configurar Agora') {
-            ConfigPanel.open(context, onConfigSaved);
+            ConfigPanel.open(context, onConfigSaved, collectorManager, evalsManager);
         }
     }
 

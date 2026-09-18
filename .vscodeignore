@@ -1,5 +1,6 @@
 .vscode/**
 .gitignore
+.dt-eval.yaml
 scripts/**
 src/**
 tsconfig.json

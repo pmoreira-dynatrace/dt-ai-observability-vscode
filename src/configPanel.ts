@@ -1,12 +1,21 @@
 import * as vscode from 'vscode';
+import { CollectorManager } from './collector';
+import { EvalsManager } from './evals';
 
 export class ConfigPanel {
     static currentPanel: ConfigPanel | undefined;
     private readonly panel: vscode.WebviewPanel;
     private readonly context: vscode.ExtensionContext;
     private readonly onSaved: () => void;
+    private readonly collectorManager: CollectorManager;
+    private readonly evalsManager: EvalsManager;
 
-    static open(context: vscode.ExtensionContext, onSaved: () => void): void {
+    static open(
+      context: vscode.ExtensionContext,
+      onSaved: () => void,
+      collectorManager: CollectorManager,
+      evalsManager: EvalsManager
+    ): void {
         if (ConfigPanel.currentPanel) {
             ConfigPanel.currentPanel.panel.reveal(vscode.ViewColumn.One);
             return;
@@ -17,25 +26,77 @@ export class ConfigPanel {
             vscode.ViewColumn.One,
             { enableScripts: true, retainContextWhenHidden: true }
         );
-        ConfigPanel.currentPanel = new ConfigPanel(panel, context, onSaved);
+        ConfigPanel.currentPanel = new ConfigPanel(panel, context, onSaved, collectorManager, evalsManager);
     }
 
-    private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, onSaved: () => void) {
+      private constructor(
+        panel: vscode.WebviewPanel,
+        context: vscode.ExtensionContext,
+        onSaved: () => void,
+        collectorManager: CollectorManager,
+        evalsManager: EvalsManager
+      ) {
         this.panel = panel;
         this.context = context;
         this.onSaved = onSaved;
+        this.collectorManager = collectorManager;
+        this.evalsManager = evalsManager;
 
         this.panel.webview.html = this.getHtml();
 
+        collectorManager.setLogLineListener((line) => {
+          this.panel.webview.postMessage({ command: 'logAppend', line });
+        });
+        collectorManager.setStatusListener((running) => {
+          this.panel.webview.postMessage({ command: 'collectorStatus', running, logLines: [] });
+        });
+
         this.panel.webview.onDidReceiveMessage(async (msg) => {
             switch (msg.command) {
-                case 'load':     await this.sendCurrentSettings(); break;
+            case 'load':
+              await this.sendCurrentSettings();
+              this.sendCollectorStatus();
+              break;
                 case 'validate': await this.handleValidate(msg.endpoint, msg.token); break;
                 case 'save':     await this.handleSave(msg.data); break;
+            case 'saveEvalsEnabled':
+              await vscode.workspace.getConfiguration('dynatraceAiObs')
+                .update('evalsEnabled', msg.evalsEnabled, vscode.ConfigurationTarget.Global);
+              break;
+            case 'getCollectorStatus': this.sendCollectorStatus(); break;
+            case 'startCollector':
+              await this.collectorManager.start();
+              this.sendCollectorStatus();
+              break;
+            case 'stopCollector':
+              await this.collectorManager.stop();
+              this.sendCollectorStatus();
+              break;
+            case 'restartCollector':
+              await this.collectorManager.stop();
+              await this.collectorManager.start();
+              this.sendCollectorStatus();
+              break;
+            case 'installEvals': await this.evalsManager.installInTerminal(); break;
+            case 'configureEvals': await this.evalsManager.configure(); break;
+            case 'runEvals': await this.evalsManager.run(); break;
+            case 'validateEvals': await this.evalsManager.validate(); break;
             }
         });
 
-        this.panel.onDidDispose(() => { ConfigPanel.currentPanel = undefined; });
+        this.panel.onDidDispose(() => {
+          collectorManager.setLogLineListener(undefined);
+          collectorManager.setStatusListener(undefined);
+          ConfigPanel.currentPanel = undefined;
+        });
+      }
+
+      private sendCollectorStatus(): void {
+        this.panel.webview.postMessage({
+          command: 'collectorStatus',
+          running: this.collectorManager.isRunning(),
+          logLines: this.collectorManager.getLogBuffer(),
+        });
     }
 
     private async sendCurrentSettings(): Promise<void> {
@@ -90,7 +151,6 @@ export class ConfigPanel {
             }
             this.panel.webview.postMessage({ command: 'saveResult', success: true });
             this.onSaved();
-            this.panel.dispose();
         } catch (err) {
             this.panel.webview.postMessage({ command: 'saveResult', success: false, error: String(err) });
         }
@@ -119,11 +179,25 @@ export class ConfigPanel {
     font-size: var(--vscode-font-size);
     color: var(--vscode-foreground);
     background: var(--vscode-editor-background);
-    padding: 24px 32px 48px;
-    max-width: 740px;
+    padding: 0;
+    max-width: 800px;
   }
   h1 { font-size: 1.3em; font-weight: 600; margin-bottom: 4px; }
-  .subtitle { color: var(--vscode-descriptionForeground); margin-bottom: 28px; font-size: 0.92em; }
+  .header { padding: 20px 32px 0; }
+  .subtitle { color: var(--vscode-descriptionForeground); font-size: 0.92em; }
+  .tab-bar {
+    display: flex; border-bottom: 1px solid var(--vscode-panel-border, #444);
+    margin-top: 16px; padding: 0 32px;
+  }
+  .tab-btn {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 8px 18px; margin-bottom: -1px; cursor: pointer;
+    color: var(--vscode-foreground); font: inherit; opacity: 0.7;
+  }
+  .tab-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground); }
+  .tab-btn.active { opacity: 1; border-bottom-color: var(--vscode-focusBorder); font-weight: 500; }
+  .tab-pane { display: none; padding: 24px 32px 48px; }
+  .tab-pane.active { display: block; }
   section { margin-bottom: 28px; }
   section h2 {
     font-size: 0.78em; font-weight: 600; letter-spacing: 0.08em;
@@ -233,12 +307,54 @@ export class ConfigPanel {
     font-family: inherit; font-size: inherit; cursor: pointer;
   }
   .btn-secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #888; flex-shrink: 0; }
+  .status-dot.running { background: #3c3; animation: pulse 1.5s infinite; }
+  .status-dot.stopped { background: #c33; }
+  .status-dot.busy { background: #fa0; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .log-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  #logBox {
+    height: 320px; overflow-y: auto; padding: 10px;
+    background: var(--vscode-terminal-background, #1e1e1e);
+    color: var(--vscode-terminal-foreground, #d4d4d4);
+    border: 1px solid var(--vscode-panel-border, #333); border-radius: 2px;
+    font-family: var(--vscode-editor-font-family, monospace); font-size: 0.82em;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .btn-link {
+    background: none; border: none; padding: 3px 8px; cursor: pointer;
+    color: var(--vscode-textLink-foreground); font: inherit; font-size: 0.85em;
+  }
+  .btn-link:hover { background: var(--vscode-toolbar-hoverBackground); }
+  .eval-actions { display: flex; flex-direction: column; gap: 10px; max-width: 390px; }
+  .eval-actions button { text-align: left; }
+  .warning { color: var(--vscode-editorWarning-foreground, #fa0); margin: -6px 0 14px; }
+  @media (max-width: 560px) {
+    .header, .tab-pane { padding-left: 16px; padding-right: 16px; }
+    .tab-bar { padding: 0 8px; }
+    .tab-btn { flex: 1; padding: 8px 6px; }
+    .row-2 { grid-template-columns: 1fr; gap: 0; }
+    .log-toolbar { align-items: flex-start; gap: 8px; }
+  }
 </style>
 </head>
 <body>
 
-<h1>Dynatrace AI Observability</h1>
-<p class="subtitle">Configure as credenciais e preferências da extensão.</p>
+<div class="header">
+  <h1>Dynatrace AI Observability</h1>
+  <p class="subtitle">Configure credenciais, gerencie o coletor e acesse os Evals.</p>
+</div>
+
+<div class="tab-bar" role="tablist" aria-label="Seções do painel">
+  <button class="tab-btn active" id="tabBtnConfig" role="tab" aria-controls="paneConfig">Configurações</button>
+  <button class="tab-btn" id="tabBtnColetor" role="tab" aria-controls="paneColetor">Coletor</button>
+  <button class="tab-btn" id="tabBtnEvals" role="tab" aria-controls="paneEvals">Evals</button>
+</div>
+
+<div id="paneConfig" class="tab-pane active" role="tabpanel">
 
 <section>
   <h2>Dynatrace</h2>
@@ -323,14 +439,81 @@ export class ConfigPanel {
 
 <div id="val-banner"></div>
 <div class="footer">
-  <button class="btn-primary" id="btnSave">Salvar e iniciar coletor</button>
+  <button class="btn-primary" id="btnSave">Salvar configurações</button>
   <button class="btn-secondary" id="btnValidate">Validar credenciais</button>
+</div>
+</div>
+
+<div id="paneColetor" class="tab-pane" role="tabpanel">
+  <section>
+    <h2>Status</h2>
+    <div class="status-row">
+      <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+      <span id="statusText">Verificando...</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="btnStart">Iniciar</button>
+      <button class="btn-secondary" id="btnStop">Parar</button>
+      <button class="btn-secondary" id="btnRestart">Reiniciar</button>
+    </div>
+  </section>
+  <section>
+    <div class="log-toolbar">
+      <h2 style="margin-bottom:0">Log do coletor</h2>
+      <div>
+        <button class="btn-link" id="btnRefreshLog">Atualizar</button>
+        <button class="btn-link" id="btnScrollBottom">Ir ao fim</button>
+        <button class="btn-link" id="btnClearLog">Limpar</button>
+      </div>
+    </div>
+    <pre id="logBox" aria-live="polite"></pre>
+    <div class="hint" style="margin-top:6px">Até 300 linhas, atualizadas em tempo real.</div>
+  </section>
+</div>
+
+<div id="paneEvals" class="tab-pane" role="tabpanel">
+  <section>
+    <h2>Dynatrace Evals</h2>
+    <div class="checkbox-row" id="rowEvalsTab">
+      <input type="checkbox" id="evalsEnabledTab">
+      <div>
+        <div class="lbl">Habilitar Dynatrace Evals</div>
+        <div class="hint">Avalia spans gen_ai.* com os evaluators configurados.</div>
+      </div>
+    </div>
+    <div id="evalsCaptureWarn" class="hint warning" style="display:none">
+      Habilite "Capturar prompts" na aba Configurações para usar os Evals.
+    </div>
+  </section>
+  <section>
+    <h2>Ações</h2>
+    <div class="eval-actions">
+      <button class="btn-secondary" id="btnInstallEvals">Instalar dt-evals</button>
+      <button class="btn-secondary" id="btnConfigureEvals">Abrir wizard de configuração</button>
+      <button class="btn-primary" id="btnRunEvals">Rodar Evals</button>
+      <button class="btn-secondary" id="btnValidateEvals">Validar setup</button>
+    </div>
+    <div class="hint" style="margin-top:14px">As ações são abertas no terminal integrado.</div>
+  </section>
 </div>
 
 <script nonce="${nonce}">
 (function() {
   var vscode = acquireVsCodeApi();
   var endpointMode = 'tenant';
+  var collectorLogLines = [];
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(function(button) { button.classList.remove('active'); });
+    document.querySelectorAll('.tab-pane').forEach(function(pane) { pane.classList.remove('active'); });
+    document.getElementById('tabBtn' + name).classList.add('active');
+    document.getElementById('pane' + name).classList.add('active');
+    if (name === 'Coletor') { vscode.postMessage({ command: 'getCollectorStatus' }); }
+  }
+
+  document.getElementById('tabBtnConfig').addEventListener('click', function() { switchTab('Config'); });
+  document.getElementById('tabBtnColetor').addEventListener('click', function() { switchTab('Coletor'); });
+  document.getElementById('tabBtnEvals').addEventListener('click', function() { switchTab('Evals'); });
 
   function setMode(mode) {
     endpointMode = mode;
@@ -359,11 +542,22 @@ export class ConfigPanel {
     var capture  = document.getElementById('capturePrompts').checked;
     var evalsChk = document.getElementById('evalsEnabled');
     var evalsRow = document.getElementById('rowEvals');
+    var evalsTabChk = document.getElementById('evalsEnabledTab');
     evalsChk.disabled = !capture;
-    if (!capture) { evalsChk.checked = false; }
+    evalsTabChk.disabled = !capture;
+    if (!capture) { evalsChk.checked = false; evalsTabChk.checked = false; }
     evalsRow.classList.toggle('disabled', !capture);
+    document.getElementById('rowEvalsTab').classList.toggle('disabled', !capture);
+    document.getElementById('evalsCaptureWarn').style.display = capture ? 'none' : 'block';
   }
   document.getElementById('capturePrompts').addEventListener('change', syncEvalsState);
+  document.getElementById('evalsEnabled').addEventListener('change', function() {
+    document.getElementById('evalsEnabledTab').checked = this.checked;
+  });
+  document.getElementById('evalsEnabledTab').addEventListener('change', function() {
+    document.getElementById('evalsEnabled').checked = this.checked;
+    vscode.postMessage({ command: 'saveEvalsEnabled', evalsEnabled: this.checked });
+  });
 
   function addAttrRow(key, val) {
     key = key || ''; val = val || '';
@@ -433,8 +627,77 @@ export class ConfigPanel {
     });
   });
 
+  function setCollectorBusy(busy, label) {
+    ['btnStart', 'btnStop', 'btnRestart'].forEach(function(id) {
+      document.getElementById(id).disabled = busy;
+    });
+    if (busy) {
+      document.getElementById('statusDot').className = 'status-dot busy';
+      document.getElementById('statusText').textContent = label;
+    }
+  }
+
+  function renderCollectorLog(scrollToBottom) {
+    var box = document.getElementById('logBox');
+    box.textContent = collectorLogLines.join('\n');
+    if (scrollToBottom) { box.scrollTop = box.scrollHeight; }
+  }
+
+  document.getElementById('btnStart').addEventListener('click', function() {
+    setCollectorBusy(true, 'Iniciando...');
+    vscode.postMessage({ command: 'startCollector' });
+  });
+  document.getElementById('btnStop').addEventListener('click', function() {
+    setCollectorBusy(true, 'Parando...');
+    vscode.postMessage({ command: 'stopCollector' });
+  });
+  document.getElementById('btnRestart').addEventListener('click', function() {
+    setCollectorBusy(true, 'Reiniciando...');
+    vscode.postMessage({ command: 'restartCollector' });
+  });
+  document.getElementById('btnRefreshLog').addEventListener('click', function() {
+    vscode.postMessage({ command: 'getCollectorStatus' });
+  });
+  document.getElementById('btnScrollBottom').addEventListener('click', function() {
+    var box = document.getElementById('logBox');
+    box.scrollTop = box.scrollHeight;
+  });
+  document.getElementById('btnClearLog').addEventListener('click', function() {
+    collectorLogLines = [];
+    renderCollectorLog(false);
+  });
+
+  document.getElementById('btnInstallEvals').addEventListener('click', function() {
+    vscode.postMessage({ command: 'installEvals' });
+  });
+  document.getElementById('btnConfigureEvals').addEventListener('click', function() {
+    vscode.postMessage({ command: 'configureEvals' });
+  });
+  document.getElementById('btnRunEvals').addEventListener('click', function() {
+    vscode.postMessage({ command: 'runEvals' });
+  });
+  document.getElementById('btnValidateEvals').addEventListener('click', function() {
+    vscode.postMessage({ command: 'validateEvals' });
+  });
+
   window.addEventListener('message', function(e) {
     var msg = e.data;
+    if (msg.command === 'collectorStatus') {
+      document.getElementById('statusDot').className = 'status-dot ' + (msg.running ? 'running' : 'stopped');
+      document.getElementById('statusText').textContent = msg.running ? 'Rodando' : 'Parado';
+      setCollectorBusy(false, '');
+      if (msg.logLines) {
+        collectorLogLines = msg.logLines.slice(-300);
+        renderCollectorLog(true);
+      }
+    }
+    if (msg.command === 'logAppend') {
+      var logBox = document.getElementById('logBox');
+      var nearBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 60;
+      collectorLogLines.push(msg.line);
+      if (collectorLogLines.length > 300) { collectorLogLines.shift(); }
+      renderCollectorLog(nearBottom);
+    }
     if (msg.command === 'init')             { populate(msg.data); }
     if (msg.command === 'validating')       { showBanner('validating', '⏳ Validando credenciais…'); }
     if (msg.command === 'validationResult') {
@@ -467,6 +730,7 @@ export class ConfigPanel {
     document.getElementById('healthPort').value       = d.healthPort    || 13133;
 
     document.getElementById('evalsEnabled').checked = !!d.evalsEnabled;
+    document.getElementById('evalsEnabledTab').checked = !!d.evalsEnabled;
     syncEvalsState();
 
     document.getElementById('attrRows').innerHTML = '';
