@@ -3,8 +3,38 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
+import * as net from 'net';
 import { getBinaryPath } from './downloader';
 import { StatusBarManager } from './statusBar';
+
+/**
+ * Check if a TCP port is available on 0.0.0.0 (all interfaces).
+ */
+function isPortAvailable(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+        const server = net.createServer();
+        server.once('error', () => resolve(false));
+        server.once('listening', () => {
+            server.close(() => resolve(true));
+        });
+        server.listen(port, '0.0.0.0');
+    });
+}
+
+/**
+ * Starting from `startPort`, find the first available TCP port.
+ * Tries up to `maxAttempts` consecutive ports.
+ */
+async function findAvailablePort(startPort: number, maxAttempts: number = 50): Promise<number> {
+    for (let i = 0; i < maxAttempts; i++) {
+        const port = startPort + i;
+        if (port > 65535) { break; }
+        if (await isPortAvailable(port)) {
+            return port;
+        }
+    }
+    throw new Error(`Nenhuma porta disponível encontrada a partir de ${startPort} (tentou ${maxAttempts} portas).`);
+}
 
 export class CollectorManager {
     private process: cp.ChildProcess | undefined;
@@ -80,8 +110,8 @@ export class CollectorManager {
         const config = vscode.workspace.getConfiguration('dynatraceAiObs');
         const endpoint = config.get<string>('endpoint', '');
         const email = config.get<string>('userEmail', '');
-        const port = config.get<number>('collectorPort', 4318);
-        const healthPort = config.get<number>('healthCheckPort', 13133);
+        const configuredPort = config.get<number>('collectorPort', 4318);
+        const configuredHealthPort = config.get<number>('healthCheckPort', 13133);
 
         if (!token || !endpoint) {
             vscode.window.showErrorMessage(
@@ -99,12 +129,50 @@ export class CollectorManager {
             return;
         }
 
+        // ── Auto-discover available ports ──────────────────────────────────
+        let port = configuredPort;
+        let healthPort = configuredHealthPort;
+
+        try {
+            if (!(await isPortAvailable(port))) {
+                this.log(`Porta OTLP ${port} está ocupada. Buscando porta disponível...`);
+                port = await findAvailablePort(port + 1);
+                this.log(`Porta OTLP alternativa encontrada: ${port}`);
+                await config.update('collectorPort', port, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage(
+                    `Dynatrace AI Obs: porta OTLP ${configuredPort} ocupada — usando ${port}.`
+                );
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            vscode.window.showErrorMessage(`Dynatrace AI Obs: não foi possível encontrar porta OTLP disponível — ${msg}`);
+            return;
+        }
+
+        try {
+            if (!(await isPortAvailable(healthPort))) {
+                this.log(`Porta health check ${healthPort} está ocupada. Buscando porta disponível...`);
+                healthPort = await findAvailablePort(healthPort + 1);
+                this.log(`Porta health check alternativa encontrada: ${healthPort}`);
+                await config.update('healthCheckPort', healthPort, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage(
+                    `Dynatrace AI Obs: porta health check ${configuredHealthPort} ocupada — usando ${healthPort}.`
+                );
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            vscode.window.showErrorMessage(`Dynatrace AI Obs: não foi possível encontrar porta health check disponível — ${msg}`);
+            return;
+        }
+        // ── End auto-discover ──────────────────────────────────────────────
+
         const configPath = this.buildCollectorConfig(config.get<Record<string,string>>('customAttributes', {}));
 
         this.log(`Iniciando OTel Collector...`);
         this.log(`  Endpoint : ${endpoint}`);
         this.log(`  Email    : ${email || '(não definido)'}`);
         this.log(`  Porta    : ${port}`);
+        this.log(`  Health   : ${healthPort}`);
 
         this.statusBar.setStarting();
 
@@ -156,19 +224,19 @@ export class CollectorManager {
         try {
             await this.waitForHealth(healthPort);
             if (!this.process) {
-                // Process died while health check was pending (e.g. port conflict on healthPort)
-                this.log(`ERRO: coletor parou antes de ficar pronto — a porta ${healthPort} pode estar em uso por outro processo.`);
+                // Process died while health check was pending
+                this.log(`ERRO: coletor parou antes de ficar pronto — verifique o log para detalhes.`);
                 vscode.window.showErrorMessage(
-                    `Dynatrace AI Obs: coletor falhou ao iniciar. Porta ${healthPort} pode estar em uso. Altere dynatraceAiObs.healthCheckPort nas configurações.`,
-                    'Abrir Configurações'
-                ).then(a => { if (a === 'Abrir Configurações') vscode.commands.executeCommand('workbench.action.openSettings', 'dynatraceAiObs.healthCheckPort'); });
+                    `Dynatrace AI Obs: coletor falhou ao iniciar. Verifique o log de saída para mais detalhes.`,
+                    'Ver Log'
+                ).then(a => { if (a === 'Ver Log') this.outputChannel.show(); });
                 return;
             }
             this.statusBar.setRunning();
             this.statusListener?.(true);
             this.log(`Coletor pronto na porta ${port} (health check: ${healthPort}).`);
         } catch {
-            this.log(`ERRO: health check falhou. Porta ${healthPort} pode estar ocupada.`);
+            this.log(`ERRO: health check falhou na porta ${healthPort}.`);
             vscode.window.showErrorMessage(
                 `Dynatrace AI Obs: não foi possível iniciar (porta OTLP: ${port}, health: ${healthPort}).`,
                 'Ver Log'

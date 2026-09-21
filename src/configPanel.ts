@@ -59,6 +59,7 @@ export class ConfigPanel {
               break;
                 case 'validate': await this.handleValidate(msg.endpoint, msg.token); break;
                 case 'save':     await this.handleSave(msg.data); break;
+                case 'saveAttrs': await this.handleSaveAttrs(msg.customAttrs); break;
             case 'saveEvalsEnabled':
               await vscode.workspace.getConfiguration('dynatraceAiObs')
                 .update('evalsEnabled', msg.evalsEnabled, vscode.ConfigurationTarget.Global);
@@ -138,6 +139,22 @@ export class ConfigPanel {
         customAttrs: Record<string, string>;
     }): Promise<void> {
         try {
+            // ── Validate credentials before saving ─────────────────────────
+            const tokenToValidate = data.token || await this.context.secrets.get('dt-ingest-token');
+            if (data.endpoint && tokenToValidate) {
+                this.panel.webview.postMessage({ command: 'validating' });
+                const validation = await validateDynatraceCredentials(data.endpoint, tokenToValidate);
+                if (!validation.valid) {
+                    this.panel.webview.postMessage({
+                        command: 'saveResult',
+                        success: false,
+                        error: `Credenciais inválidas: ${validation.error}`
+                    });
+                    return;
+                }
+            }
+            // ── End validation ─────────────────────────────────────────────
+
             const cfg = vscode.workspace.getConfiguration('dynatraceAiObs');
             await cfg.update('endpoint',         data.endpoint,        vscode.ConfigurationTarget.Global);
             await cfg.update('userEmail',        data.email,           vscode.ConfigurationTarget.Global);
@@ -153,6 +170,17 @@ export class ConfigPanel {
             this.onSaved();
         } catch (err) {
             this.panel.webview.postMessage({ command: 'saveResult', success: false, error: String(err) });
+        }
+    }
+
+    /** Save only custom attributes and restart if the collector is running */
+    private async handleSaveAttrs(customAttrs: Record<string, string>): Promise<void> {
+        try {
+            const cfg = vscode.workspace.getConfiguration('dynatraceAiObs');
+            await cfg.update('customAttributes', customAttrs, vscode.ConfigurationTarget.Global);
+            this.panel.webview.postMessage({ command: 'saveAttrsResult', success: true });
+        } catch (err) {
+            this.panel.webview.postMessage({ command: 'saveAttrsResult', success: false, error: String(err) });
         }
     }
 
@@ -272,6 +300,23 @@ export class ConfigPanel {
     color: var(--vscode-foreground); padding: 4px 10px; border-radius: 2px; cursor: pointer;
   }
   .btn-add-attr:hover { background: var(--vscode-toolbar-hoverBackground); }
+
+  .attr-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+
+  #attr-banner {
+    display: none; padding: 6px 10px; border-radius: 2px;
+    font-size: 0.85em; margin-top: 8px;
+  }
+  #attr-banner.ok {
+    display: block;
+    background: var(--vscode-inputValidation-warningBackground, #1a3a1a);
+    border: 1px solid #2a7; color: #afa;
+  }
+  #attr-banner.error {
+    display: block;
+    background: var(--vscode-inputValidation-errorBackground, #5a1a1a);
+    border: 1px solid var(--vscode-inputValidation-errorBorder, #f44);
+  }
 
   #val-banner {
     display: none; padding: 8px 12px; border-radius: 2px;
@@ -417,12 +462,12 @@ export class ConfigPanel {
     <div class="field">
       <label for="collectorPort">Porta OTLP HTTP</label>
       <input id="collectorPort" type="number" min="1024" max="65535" value="4318">
-      <div class="hint">Recebe spans da extensão e do hook</div>
+      <div class="hint">Recebe spans da extensão e do hook. Porta alternativa é encontrada automaticamente se ocupada.</div>
     </div>
     <div class="field">
       <label for="healthPort">Porta Health Check</label>
       <input id="healthPort" type="number" min="1024" max="65535" value="13133">
-      <div class="hint">Altere se a porta estiver em uso</div>
+      <div class="hint">Porta alternativa é encontrada automaticamente se ocupada.</div>
     </div>
   </div>
 </section>
@@ -433,8 +478,12 @@ export class ConfigPanel {
     <thead><tr><th style="width:40%">Chave</th><th>Valor</th><th style="width:40px"></th></tr></thead>
     <tbody id="attrRows"></tbody>
   </table>
-  <button class="btn-add-attr" id="btnAddAttr">+ Adicionar atributo</button>
-  <div class="hint" style="margin-top:6px">Adicionados a todos os spans. Ex: <code>squad</code>, <code>cost_center</code>, <code>project</code></div>
+  <div class="attr-actions">
+    <button class="btn-add-attr" id="btnAddAttr">+ Adicionar atributo</button>
+    <button class="btn-primary" id="btnSaveAttrs" style="font-size:0.85em;padding:5px 14px;">Salvar / Atualizar atributos</button>
+  </div>
+  <div class="hint" style="margin-top:6px">Adicionados a todos os spans. Ex: <code>squad</code>, <code>cost_center</code>, <code>project</code>. O coletor reinicia automaticamente ao salvar.</div>
+  <div id="attr-banner"></div>
 </section>
 
 <div id="val-banner"></div>
@@ -587,6 +636,13 @@ export class ConfigPanel {
 
   document.getElementById('btnAddAttr').addEventListener('click', function() { addAttrRow('', ''); });
 
+  // ── Save / Update Attributes button ──────────────────────────────
+  document.getElementById('btnSaveAttrs').addEventListener('click', function() {
+    var attrs = collectAttrs();
+    document.getElementById('btnSaveAttrs').disabled = true;
+    vscode.postMessage({ command: 'saveAttrs', customAttrs: attrs });
+  });
+
   function getEndpoint() {
     if (endpointMode === 'tenant') {
       var tid = document.getElementById('tenantId').value.trim();
@@ -612,6 +668,7 @@ export class ConfigPanel {
       return;
     }
     document.getElementById('btnSave').disabled = true;
+    showBanner('validating', '⏳ Validando credenciais e salvando...');
     vscode.postMessage({
       command: 'save',
       data: {
@@ -706,8 +763,20 @@ export class ConfigPanel {
     }
     if (msg.command === 'saveResult') {
       document.getElementById('btnSave').disabled = false;
-      if (msg.success) { showBanner('ok', '✓ Configurações salvas. Coletor iniciando…'); }
-      else             { showBanner('error', '✗ Erro ao salvar: ' + msg.error); }
+      if (msg.success) { showBanner('ok', '✓ Credenciais validadas e configurações salvas. Coletor reiniciando…'); }
+      else             { showBanner('error', '✗ ' + msg.error); }
+    }
+    if (msg.command === 'saveAttrsResult') {
+      document.getElementById('btnSaveAttrs').disabled = false;
+      var ab = document.getElementById('attr-banner');
+      if (msg.success) {
+        ab.className = 'ok';
+        ab.textContent = '✓ Atributos salvos. Coletor reiniciando automaticamente…';
+      } else {
+        ab.className = 'error';
+        ab.textContent = '✗ Erro ao salvar atributos: ' + msg.error;
+      }
+      setTimeout(function() { ab.className = ''; ab.style.display = 'none'; }, 5000);
     }
   });
 

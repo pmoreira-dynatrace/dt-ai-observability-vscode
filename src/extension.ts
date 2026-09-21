@@ -24,15 +24,10 @@ export async function activate(context: vscode.ExtensionContext) {
         writeAttrsFile();
         configureCopilotOtel();
         if (collectorManager.isRunning()) {
-            const action = await vscode.window.showInformationMessage(
-                'Dynatrace AI Obs: configurações salvas. O coletor já está em execução.',
-                'Reiniciar coletor',
-                'Manter atual'
-            );
-            if (action === 'Reiniciar coletor') {
-                await collectorManager.stop();
-                await collectorManager.start();
-            }
+            // Auto-restart the collector when settings are saved
+            outputChannel.appendLine(`[${ts()}] Configurações salvas — reiniciando coletor automaticamente...`);
+            await collectorManager.stop();
+            await collectorManager.start();
         } else {
             await collectorManager.start();
         }
@@ -62,12 +57,22 @@ export async function activate(context: vscode.ExtensionContext) {
     autoConfigureClaudeHooks();
     watchForClaudeDir(); // handles case where Claude Code is installed after this extension
 
+    // Watch for configuration changes that require a collector restart
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(async e => {
-            if (e.affectsConfiguration('dynatraceAiObs.customAttributes') ||
-                e.affectsConfiguration('dynatraceAiObs.capturePrompts')) {
+            const needsRestart =
+                e.affectsConfiguration('dynatraceAiObs.customAttributes') ||
+                e.affectsConfiguration('dynatraceAiObs.capturePrompts') ||
+                e.affectsConfiguration('dynatraceAiObs.collectorPort') ||
+                e.affectsConfiguration('dynatraceAiObs.healthCheckPort') ||
+                e.affectsConfiguration('dynatraceAiObs.endpoint') ||
+                e.affectsConfiguration('dynatraceAiObs.userEmail');
+
+            if (needsRestart) {
                 writeAttrsFile();
+                configureCopilotOtel();
                 if (collectorManager.isRunning()) {
+                    outputChannel.appendLine(`[${ts()}] Configuração alterada — reiniciando coletor automaticamente...`);
                     await collectorManager.stop();
                     await collectorManager.start();
                 }
