@@ -1,6 +1,7 @@
 # Dynatrace AI Observability — VS Code Extension
 
 [![Latest Release](https://img.shields.io/github/v/release/pmoreira-dynatrace/dt-ai-observability-vscode?label=Download%20latest%20release&sort=semver&style=for-the-badge&logo=github)](https://github.com/pmoreira-dynatrace/dt-ai-observability-vscode/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/pmoreira-dynatrace/dt-ai-observability-vscode/total?label=Downloads&style=for-the-badge&logo=github&logoColor=white&color=2EA44F)](https://github.com/pmoreira-dynatrace/dt-ai-observability-vscode/releases)
 
 Observe AI assistant usage (GitHub Copilot Chat, Claude Code) via OpenTelemetry and send traces directly to Dynatrace — with no Docker, no manual collector setup, and no extra infrastructure.
 
@@ -24,6 +25,26 @@ VS Code / Cursor
 
 ---
 
+## Table of contents
+
+- [Prerequisites](#prerequisites)
+  - [Dynatrace tenant](#dynatrace-tenant)
+  - [Developer machine](#developer-machine)
+- [Installation (end users)](#installation-end-users)
+- [Custom attributes](#custom-attributes)
+- [Understanding token counts](#understanding-token-counts)
+- [Validating data in Dynatrace](#validating-data-in-dynatrace)
+- [DQL Dashboard for Claude Code](#dql-dashboard-for-claude-code)
+- [Available commands](#available-commands)
+- [Extension settings](#extension-settings)
+- [Cursor](#cursor)
+- [Troubleshooting](#troubleshooting)
+- [Building from source](#building-from-source)
+- [Privacy and security](#privacy-and-security)
+- [License](#license)
+
+---
+
 ## Prerequisites
 
 ### Dynatrace tenant
@@ -34,33 +55,40 @@ VS Code / Cursor
 | App | AI & LLM Observability (install from Hub) |
 | API token | Scopes: `openTelemetryTrace.ingest` + `metrics.ingest` |
 
-#### Instalar o app de AI Observability
+<details>
+<summary><strong>Instalar o app de AI Observability</strong></summary>
 
 1. Acesse o **Hub**, pesquise por `AI observability` e selecione o app **AI Observability**.
 
-   ![Buscar o app AI Observability no Hub](docs/images/app-01-search.png)
+   <p align="center"><img src="docs/images/app-01-search.png" width="700" alt="Buscar o app AI Observability no Hub"></p>
 
 2. Abra o app e clique em **Open** (ou **Install**, caso ainda não esteja instalado) para disponibilizá-lo na tenant.
 
-   ![Detalhes do app AI Observability](docs/images/app-02-details.png)
+   <p align="center"><img src="docs/images/app-02-details.png" width="700" alt="Detalhes do app AI Observability"></p>
 
-#### Gerar o token de acesso
+</details>
+
+<details>
+<summary><strong>Gerar o token de acesso</strong></summary>
 
 1. Abra o menu rápido com **Ctrl+K**, pesquise por `acc` e selecione **Access Tokens** (Classic apps).
 
-   ![Buscar Access Tokens via Ctrl+K](docs/images/token-01-search.png)
+   <p align="center"><img src="docs/images/token-01-search.png" width="700" alt="Buscar Access Tokens via Ctrl+K"></p>
 
 2. Na tela de Access tokens, clique em **Generate new token**.
 
-   ![Botão Generate new token](docs/images/token-02-generate.png)
+   <p align="center"><img src="docs/images/token-02-generate.png" width="700" alt="Botão Generate new token"></p>
 
 3. Dê um nome ao token e selecione os scopes `metrics.ingest` (**Ingest metrics**) e `openTelemetryTrace.ingest` (**Ingest OpenTelemetry traces**). Em seguida, clique em **Generate token**.
 
-   ![Selecionar scopes e gerar o token](docs/images/token-03-scopes.png)
+   <p align="center"><img src="docs/images/token-03-scopes.png" width="700" alt="Selecionar scopes e gerar o token"></p>
+
+</details>
 
 ### Developer machine
 
-#### Hardware
+<details>
+<summary><strong>Hardware</strong></summary>
 
 | Resource | Minimum | Notes |
 |---|---|---|
@@ -69,7 +97,10 @@ VS Code / Cursor
 | Disk | 200 MB free | ~100 MB for cached collector binary |
 | Network | Internet access | Required once on first activation (binary download) |
 
-#### Operating System
+</details>
+
+<details>
+<summary><strong>Operating System</strong></summary>
 
 | OS | Minimum version | Architectures |
 |---|---|---|
@@ -79,21 +110,30 @@ VS Code / Cursor
 
 > Windows 1803+ is required for the built-in `tar` command used to extract the collector binary.
 
-#### IDE
+</details>
+
+<details>
+<summary><strong>IDE</strong></summary>
 
 | IDE | Minimum version |
 |---|---|
 | **VS Code** | 1.99.0 |
 | **Cursor** | 0.40+ |
 
-#### Software (end-user)
+</details>
+
+<details>
+<summary><strong>Software (end-user)</strong></summary>
 
 | Software | Version | Required for | Notes |
 |---|---|---|---|
 | **Python 3** | 3.6+ | Claude Code hooks | Pre-installed on macOS/Linux. Windows: install from [python.org](https://www.python.org/downloads/) and check **Add Python to PATH** |
 | **tar** | Any | Extracting collector binary | Pre-installed on all supported OSes |
 
-#### Network and firewall requirements
+</details>
+
+<details>
+<summary><strong>Network and firewall requirements</strong></summary>
 
 The extension requires outbound HTTPS (port 443) access to the following domains. **All connections are outbound only — no inbound ports are opened on the developer machine.**
 
@@ -136,7 +176,7 @@ Replace `*` with your tenant ID, e.g.: `abc12345.live.dynatrace.com`
 | `4317` (TCP, localhost) | OTel Collector — OTLP gRPC receiver | Only accessible from localhost |
 | `13133` (TCP, localhost) | OTel Collector — health check endpoint | Used by the extension to verify the collector started correctly |
 
-> **Port conflicts:** If port `4318` or `13133` is already in use, change the respective port in VS Code settings:
+> **Port conflicts:** ports are checked before the collector starts. If `4318` or `13133` is already in use, the extension automatically finds and uses the next free port and updates the setting for you. You can still set a preferred value manually:
 > - `dynatraceAiObs.collectorPort` — controls the OTLP receiver port (default `4318`)
 > - `dynatraceAiObs.healthCheckPort` — controls the health check port (default `13133`)
 
@@ -164,6 +204,8 @@ No inbound rules required.
 No VPN split-tunnel changes required.
 ```
 
+</details>
+
 ---
 
 ## Installation (end users)
@@ -180,11 +222,11 @@ Download `dt-ai-observability.vsix` from the [Releases](../../releases/latest) p
 3. Click `···` (three dots) at the top of the Extensions panel
 4. Select **Install from VSIX...**
 
-   ![Menu Install from VSIX](docs/images/install-01-vsix-menu.png)
+   <p align="center"><img src="docs/images/install-01-vsix-menu.png" width="700" alt="Menu Install from VSIX"></p>
 
 5. Pick the downloaded `dt-ai-observability.vsix`
 
-   ![Selecionar o arquivo .vsix](docs/images/install-02-vsix-file.png)
+   <p align="center"><img src="docs/images/install-02-vsix-file.png" width="700" alt="Selecionar o arquivo .vsix"></p>
 
 6. Click **Reload**
 
@@ -197,7 +239,8 @@ code --install-extension dt-ai-observability.vsix
 
 On first launch, a prompt appears. Click **Configurar Agora** to open the unified management panel. You can reopen it at any time with `Cmd+Shift+P` → **Dynatrace AI Obs: Configurar Credenciais**.
 
-#### Configuration tab
+<details open>
+<summary><strong>Configuration tab</strong></summary>
 
 The **Configurações** tab contains credentials, privacy controls, local ports, and custom attributes in one place.
 
@@ -212,7 +255,7 @@ The **Configurações** tab contains credentials, privacy controls, local ports,
 
 Enter only the tenant identifier. The generated OTLP endpoint is shown immediately below the field. The API token remains protected in the OS keychain, while the email identifies the developer in reports.
 
-![Configuration tab using Tenant ID mode, prompt capture controls, ports, and custom attributes](docs/images/panel-01-settings-tenant.png)
+<p align="center"><img src="docs/images/panel-01-settings-tenant.png" width="800" alt="Configuration tab using Tenant ID mode, prompt capture controls, ports, and custom attributes"></p>
 
 The highlighted **Coleta** area controls data privacy. Enabling **Capturar conteúdo de prompts e respostas** unlocks Dynatrace Evals; when disabled, only metadata such as model, duration, tokens, and tool calls is collected.
 
@@ -220,11 +263,14 @@ The highlighted **Coleta** area controls data privacy. Enabling **Capturar conte
 
 Choose **OTLP Endpoint completo** when using a custom or non-standard endpoint. Enter the complete `/api/v2/otlp` URL and verify that the hostname uses `.live.dynatrace.com`, never `.apps.dynatrace.com`.
 
-![Configuration tab using the full Dynatrace OTLP endpoint mode](docs/images/panel-02-settings-otlp-endpoint.png)
+<p align="center"><img src="docs/images/panel-02-settings-otlp-endpoint.png" width="800" alt="Configuration tab using the full Dynatrace OTLP endpoint mode"></p>
 
-Use **Validar credenciais** to test the endpoint and token before saving. **Salvar configurações** applies the values and starts or offers to restart the collector when required.
+Use **Validar credenciais** to test the endpoint and token, or just click **Salvar configurações** — credentials are now validated automatically before saving, and the collector restarts on its own to apply the new values.
 
-#### Collector tab
+</details>
+
+<details>
+<summary><strong>Collector tab</strong></summary>
 
 The **Coletor** tab provides day-to-day operational control without leaving the panel:
 
@@ -233,9 +279,12 @@ The **Coletor** tab provides day-to-day operational control without leaving the 
 - The live log keeps the latest 300 lines and follows new output while you are near the bottom.
 - **Atualizar**, **Ir ao fim**, and **Limpar** help inspect startup, health checks, and export errors.
 
-![Collector tab showing running status, process controls, and live OpenTelemetry logs](docs/images/panel-03-collector.png)
+<p align="center"><img src="docs/images/panel-03-collector.png" width="800" alt="Collector tab showing running status, process controls, and live OpenTelemetry logs"></p>
 
-#### Evals tab
+</details>
+
+<details>
+<summary><strong>Evals tab</strong></summary>
 
 The **Evals** tab centralizes the `@dynatrace-oss/dt-evals` workflow. Prompt capture must be enabled in **Configurações** before Evals can be activated; both toggles stay synchronized.
 
@@ -246,7 +295,9 @@ The **Evals** tab centralizes the `@dynatrace-oss/dt-evals` workflow. Prompt cap
 
 Interactive actions open in the integrated terminal so progress and prompts remain visible.
 
-![Evals tab showing the prompt capture requirement and available evaluation actions](docs/images/panel-04-evals.png)
+<p align="center"><img src="docs/images/panel-04-evals.png" width="800" alt="Evals tab showing the prompt capture requirement and available evaluation actions"></p>
+
+</details>
 
 The token is stored in the **OS keychain** via VS Code SecretStorage — never in plain text.
 
@@ -296,7 +347,11 @@ The command opens an interactive menu:
 - **Remove attribute** — select from a list of existing keys
 - **Done** — saves and restarts the collector immediately
 
-Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS Code settings (for the collector resource attributes). No restart required.
+**Via the configuration panel:**
+
+The **Configurações** tab also has an attributes table with a dedicated **Salvar / Atualizar atributos** button — edit the table and click it to persist the changes and restart the collector, without touching the rest of the settings.
+
+Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS Code settings (for the collector resource attributes).
 
 **Example use cases:**
 
@@ -344,7 +399,8 @@ Open the **AI Observability** app in your tenant:
 
 > **Prompts stream tab**: shows both GitHub Copilot Chat and Claude Code data. Input/Output columns for Claude Code require `dynatraceAiObs.capturePrompts: true` in VS Code settings (disabled by default). System Prompt shows `-` for Claude Code — known limitation.
 
-### DQL queries
+<details>
+<summary><strong>DQL queries</strong></summary>
 
 Open **Notebooks** in your tenant and run these queries.
 
@@ -446,6 +502,8 @@ fetch spans, from:now()-1h
 
 > The `isNotNull(gen_ai.conversation.id)` filter excludes Copilot's internal background calls (e.g. orchestration using `gpt-4o-mini`) that have no conversation context and are covered by the flat Copilot subscription — not billed per token to you.
 
+</details>
+
 ---
 
 ## DQL Dashboard for Claude Code
@@ -484,9 +542,9 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `dynatraceAiObs.userEmail` | `""` | Developer email (appears in spans) |
 | `dynatraceAiObs.autoStart` | `true` | Auto-start collector when VS Code opens |
 | `dynatraceAiObs.capturePrompts` | `false` | Send prompt and response content in spans (Input/Output columns in Prompts stream). Disabled by default for privacy. |
-| `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port (receives traces from VS Code and Claude Code hook) |
-| `dynatraceAiObs.healthCheckPort` | `13133` | Collector health check port (change if 13133 is already in use) |
-| `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command) |
+| `dynatraceAiObs.collectorPort` | `4318` | Local OTLP HTTP port (receives traces from VS Code and Claude Code hook). Auto-adjusted if already in use. |
+| `dynatraceAiObs.healthCheckPort` | `13133` | Collector health check port. Auto-adjusted if already in use. |
+| `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command or the config panel) |
 | `dynatraceAiObs.evalsEnabled` | `false` | Enable Dynatrace Evals; requires prompt capture |
 
 ---
@@ -501,7 +559,8 @@ Claude Code runs as a CLI inside the Cursor integrated terminal. The hook-based 
 
 Cursor's built-in AI chat (the subscription-based model via `api2.cursor.sh`) does **not** expose OTel hooks or a configurable API endpoint for its native chat. This means it is not possible to capture native Cursor AI prompts with this extension today.
 
-**What was investigated:**
+<details>
+<summary><strong>What was investigated</strong></summary>
 
 | Approach | Feasibility | Why not used |
 |---|---|---|
@@ -514,16 +573,21 @@ Cursor's built-in AI chat (the subscription-based model via `api2.cursor.sh`) do
 
 This is a known gap — native Cursor AI observability requires Cursor to add OTel support to their platform.
 
+</details>
+
 ---
 
 ## Troubleshooting
 
+<details open>
+<summary><strong>Common symptoms and fixes</strong></summary>
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Orange status bar after setup | Binary still downloading | Wait — it's ~100 MB on first run |
-| `curl localhost:13133` fails | Port 13133 already in use | Change `dynatraceAiObs.healthCheckPort` in settings |
-| Extension fails to start on port 4318 | Port 4318 already in use | Change `dynatraceAiObs.collectorPort` in settings |
-| No spans in Dynatrace | Invalid token or endpoint uses `.apps.` | Reconfigure via **Configurar Credenciais** |
+| `curl localhost:13133` fails | Port 13133 already in use | The extension now finds a free port automatically; check the Output log for the port actually used |
+| Extension fails to start on port 4318 | Port 4318 already in use | Same as above — an alternative port is chosen and saved automatically |
+| No spans in Dynatrace | Invalid token or endpoint uses `.apps.` | Reconfigure via **Configurar Credenciais** — credentials are now validated before saving |
 | `user.email` null in spans | Email not filled during setup | Reconfigure and add email |
 | Download fails | No access to `github.com` | Check proxy/firewall; allow `github.com` and `objects.githubusercontent.com` |
 | Copilot sends data but Claude Code doesn't | Python 3 not found | Run `python3 --version` in terminal; install if missing |
@@ -531,6 +595,8 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 | Custom attributes command not found | Extension not updated | Reinstall from latest VSIX |
 | Claude Code hooks not executing | Claude Code not restarted after hook setup | Close and reopen Claude Code |
 | System Prompt shows `-` in Prompts stream | Claude Code does not expose its system prompt to hooks | Known limitation — no fix available |
+
+</details>
 
 ---
 
@@ -554,18 +620,18 @@ npm run compile
 
 The binary (~100 MB) is downloaded automatically on first activation — it is never bundled in the VSIX.
 
-### Project structure
+<details>
+<summary><strong>Project structure</strong></summary>
 
 ```
 vscode-dt-ai-observability/
 ├── src/
 │   ├── extension.ts      — entry point, activation and configure flow
-│   ├── collector.ts      — OTel Collector process lifecycle
+│   ├── collector.ts      — OTel Collector process lifecycle, port auto-discovery
 │   ├── downloader.ts     — platform detection, binary download and cache
 │   ├── claudeHooks.ts    — Claude Code hook script (Python) + auto-install
 │   ├── configPanel.ts    — three-tab configuration and operations webview
 │   ├── evals.ts          — dt-evals installation and terminal workflows
-│   ├── settings.ts       — GitHub Copilot OTel settings auto-config
 │   └── statusBar.ts      — VS Code status bar indicator
 ├── resources/
 │   └── otel-collector.yaml  — Collector config (uses env vars for credentials)
@@ -575,12 +641,15 @@ vscode-dt-ai-observability/
 └── package.json
 ```
 
+</details>
+
 ---
 
 ## Privacy and security
 
 - **Prompt and response capture**: disabled by default (`dynatraceAiObs.capturePrompts: false`). Enable in VS Code settings to populate the Input/Output columns in the Prompts stream. When disabled, only metadata is captured (model, duration, token counts, tool calls). To stop all capture, use **Dynatrace AI Obs: Remover Hooks do Claude Code**.
 - **Token stored in OS keychain**: VS Code SecretStorage is backed by the OS keychain (Keychain on macOS, Credential Manager on Windows, libsecret on Linux) — never stored in plain text or `settings.json`.
+- **Credentials validated before saving**: the configuration panel checks the endpoint and token against the Dynatrace API before writing them, so a bad token or URL is caught immediately instead of failing silently at runtime.
 - **Collector makes outbound HTTPS only**: The local collector only connects outbound to your Dynatrace tenant. No public port is exposed.
 - **Verifiable binary**: Downloaded directly from [open-telemetry/opentelemetry-collector-releases](https://github.com/open-telemetry/opentelemetry-collector-releases).
 
