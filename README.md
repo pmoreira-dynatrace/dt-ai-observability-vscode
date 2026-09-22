@@ -244,6 +244,8 @@ On first launch, a prompt appears. Click **Configurar Agora** to open the unifie
 
 The **Configurações** tab contains credentials, privacy controls, local ports, and custom attributes in one place.
 
+> **Panel language:** a dropdown in the top-right corner of the panel lets you switch its UI between **Português (BR)**, **English**, and **Español** at any time — the choice is saved automatically and persists across restarts (`dynatraceAiObs.language`). This only affects the panel itself; Command Palette entries and VS Code notifications are unaffected.
+
 | Field | Example | Notes |
 |---|---|---|
 | Tenant ID | `abc12345` | Recommended; the extension builds the OTLP URL automatically |
@@ -546,6 +548,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `dynatraceAiObs.healthCheckPort` | `13133` | Collector health check port. Auto-adjusted if already in use. |
 | `dynatraceAiObs.customAttributes` | `{}` | Custom attributes added to all spans (managed via Quick Pick command or the config panel) |
 | `dynatraceAiObs.evalsEnabled` | `false` | Enable Dynatrace Evals; requires prompt capture |
+| `dynatraceAiObs.language` | `"pt-BR"` | Configuration panel language: `pt-BR`, `en`, or `es`. Can also be changed from the dropdown inside the panel itself. |
 
 ---
 

@@ -119,6 +119,17 @@
           "type": "boolean",
           "default": false,
           "description": "Habilita o Dynatrace Evals (dt-evals) para avaliar spans gen_ai.* (ex.: Prompt Injection). Quando ativado, o CLI @dynatrace-oss/dt-evals \u00e9 instalado globalmente."
+        },
+        "dynatraceAiObs.language": {
+          "type": "string",
+          "enum": ["pt-BR", "en", "es"],
+          "enumDescriptions": [
+            "Portugu\u00eas (Brasil)",
+            "English",
+            "Espa\u00f1ol"
+          ],
+          "default": "pt-BR",
+          "description": "Idioma do painel de configura\u00e7\u00e3o (Dynatrace AI Obs: Configurar Credenciais). Tamb\u00e9m pode ser alterado direto no seletor dentro do painel."
         }
       }
     }

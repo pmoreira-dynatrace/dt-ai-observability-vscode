@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CollectorManager } from './collector';
 import { EvalsManager } from './evals';
+import { Language, translations, t, tf, normalizeLanguage, DEFAULT_LANGUAGE } from './i18n';
 
 export class ConfigPanel {
     static currentPanel: ConfigPanel | undefined;
@@ -42,7 +43,10 @@ export class ConfigPanel {
         this.collectorManager = collectorManager;
         this.evalsManager = evalsManager;
 
-        this.panel.webview.html = this.getHtml();
+        const currentLang = normalizeLanguage(
+            vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('language')
+        );
+        this.panel.webview.html = this.getHtml(currentLang);
 
         collectorManager.setLogLineListener((line) => {
           this.panel.webview.postMessage({ command: 'logAppend', line });
@@ -60,6 +64,10 @@ export class ConfigPanel {
                 case 'validate': await this.handleValidate(msg.endpoint, msg.token); break;
                 case 'save':     await this.handleSave(msg.data); break;
                 case 'saveAttrs': await this.handleSaveAttrs(msg.customAttrs); break;
+            case 'saveLanguage':
+              await vscode.workspace.getConfiguration('dynatraceAiObs')
+                .update('language', normalizeLanguage(msg.language), vscode.ConfigurationTarget.Global);
+              break;
             case 'saveEvalsEnabled':
               await vscode.workspace.getConfiguration('dynatraceAiObs')
                 .update('evalsEnabled', msg.evalsEnabled, vscode.ConfigurationTarget.Global);
@@ -100,6 +108,10 @@ export class ConfigPanel {
         });
     }
 
+    private getLanguage(): Language {
+        return normalizeLanguage(vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('language'));
+    }
+
     private async sendCurrentSettings(): Promise<void> {
         const cfg = vscode.workspace.getConfiguration('dynatraceAiObs');
         const hasToken = !!(await this.context.secrets.get('dt-ingest-token'));
@@ -122,13 +134,14 @@ export class ConfigPanel {
                 collectorPort:  cfg.get<number>('collectorPort', 4318),
                 healthPort:     cfg.get<number>('healthCheckPort', 13133),
                 customAttrs:    cfg.get<Record<string, string>>('customAttributes', {}),
+                language:       this.getLanguage(),
             }
         });
     }
 
     private async handleValidate(endpoint: string, token: string): Promise<void> {
         this.panel.webview.postMessage({ command: 'validating' });
-        const result = await validateDynatraceCredentials(endpoint, token);
+        const result = await validateDynatraceCredentials(endpoint, token, this.getLanguage());
         this.panel.webview.postMessage({ command: 'validationResult', ...result });
     }
 
@@ -138,17 +151,18 @@ export class ConfigPanel {
         collectorPort: number; healthPort: number;
         customAttrs: Record<string, string>;
     }): Promise<void> {
+        const lang = this.getLanguage();
         try {
             // ── Validate credentials before saving ─────────────────────────
             const tokenToValidate = data.token || await this.context.secrets.get('dt-ingest-token');
             if (data.endpoint && tokenToValidate) {
                 this.panel.webview.postMessage({ command: 'validating' });
-                const validation = await validateDynatraceCredentials(data.endpoint, tokenToValidate);
+                const validation = await validateDynatraceCredentials(data.endpoint, tokenToValidate, lang);
                 if (!validation.valid) {
                     this.panel.webview.postMessage({
                         command: 'saveResult',
                         success: false,
-                        error: `Credenciais inválidas: ${validation.error}`
+                        error: `${t(lang, 'errInvalidCredentialsPrefix')}${validation.error}`
                     });
                     return;
                 }
@@ -191,15 +205,17 @@ export class ConfigPanel {
         return text;
     }
 
-    private getHtml(): string {
+    private getHtml(lang: Language = DEFAULT_LANGUAGE): string {
         const nonce = this.getNonce();
+        const L = (key: string) => t(lang, key);
+        const i18nJson = JSON.stringify(translations);
         return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
-<title>Configurações</title>
+<title>${L('appTitle')}</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -211,8 +227,16 @@ export class ConfigPanel {
     max-width: 800px;
   }
   h1 { font-size: 1.3em; font-weight: 600; margin-bottom: 4px; }
-  .header { padding: 20px 32px 0; }
+  .header { padding: 20px 32px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .header-text { flex: 1; min-width: 0; }
   .subtitle { color: var(--vscode-descriptionForeground); font-size: 0.92em; }
+  .lang-select {
+    background: var(--vscode-dropdown-background, var(--vscode-input-background));
+    color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
+    border: 1px solid var(--vscode-dropdown-border, var(--vscode-input-border, #555));
+    border-radius: 2px; padding: 4px 8px; font-family: inherit; font-size: 0.85em;
+    cursor: pointer; flex-shrink: 0; margin-top: 2px;
+  }
   .tab-bar {
     display: flex; border-bottom: 1px solid var(--vscode-panel-border, #444);
     margin-top: 16px; padding: 0 32px;
@@ -389,160 +413,167 @@ export class ConfigPanel {
 <body>
 
 <div class="header">
-  <h1>Dynatrace AI Observability</h1>
-  <p class="subtitle">Configure credenciais, gerencie o coletor e acesse os Evals.</p>
+  <div class="header-text">
+    <h1 data-i18n="appTitle">${L('appTitle')}</h1>
+    <p class="subtitle" data-i18n="appSubtitle">${L('appSubtitle')}</p>
+  </div>
+  <select class="lang-select" id="langSelect" aria-label="${L('langSelectLabel')}">
+    <option value="pt-BR"${lang === 'pt-BR' ? ' selected' : ''}>Português (BR)</option>
+    <option value="en"${lang === 'en' ? ' selected' : ''}>English</option>
+    <option value="es"${lang === 'es' ? ' selected' : ''}>Español</option>
+  </select>
 </div>
 
-<div class="tab-bar" role="tablist" aria-label="Seções do painel">
-  <button class="tab-btn active" id="tabBtnConfig" role="tab" aria-controls="paneConfig">Configurações</button>
-  <button class="tab-btn" id="tabBtnColetor" role="tab" aria-controls="paneColetor">Coletor</button>
-  <button class="tab-btn" id="tabBtnEvals" role="tab" aria-controls="paneEvals">Evals</button>
+<div class="tab-bar" role="tablist" aria-label="${L('tabBarAria')}">
+  <button class="tab-btn active" id="tabBtnConfig" role="tab" aria-controls="paneConfig" data-i18n="tabConfig">${L('tabConfig')}</button>
+  <button class="tab-btn" id="tabBtnColetor" role="tab" aria-controls="paneColetor" data-i18n="tabCollector">${L('tabCollector')}</button>
+  <button class="tab-btn" id="tabBtnEvals" role="tab" aria-controls="paneEvals" data-i18n="tabEvals">${L('tabEvals')}</button>
 </div>
 
 <div id="paneConfig" class="tab-pane active" role="tabpanel">
 
 <section>
-  <h2>Dynatrace</h2>
+  <h2 data-i18n="secDynatrace">${L('secDynatrace')}</h2>
 
   <div class="field">
-    <label>Endpoint <span style="color:var(--vscode-errorForeground)">*</span></label>
+    <label><span data-i18n="endpointLabel">${L('endpointLabel')}</span> <span style="color:var(--vscode-errorForeground)">*</span></label>
     <div class="toggle-row">
-      <button class="toggle-btn active" id="btnModeTenant">Tenant ID</button>
-      <button class="toggle-btn" id="btnModeUrl">OTLP Endpoint completo</button>
+      <button class="toggle-btn active" id="btnModeTenant" data-i18n="modeTenant">${L('modeTenant')}</button>
+      <button class="toggle-btn" id="btnModeUrl" data-i18n="modeUrl">${L('modeUrl')}</button>
     </div>
 
     <div id="groupTenant">
       <input id="tenantId" type="text" placeholder="fov31014" autocomplete="off">
-      <div class="hint">Somente o ID do tenant — o endereço completo é preenchido automaticamente.</div>
+      <div class="hint" data-i18n="tenantIdHint">${L('tenantIdHint')}</div>
       <div class="generated-url" id="generatedUrl"></div>
     </div>
 
     <div id="groupUrl" style="display:none">
       <input id="endpoint" type="text" placeholder="https://abc12345.live.dynatrace.com/api/v2/otlp" autocomplete="off">
-      <div class="hint">Use <code>.live.dynatrace.com</code> — não <code>.apps.</code></div>
+      <div class="hint" data-i18n-html="endpointHintHtml">${L('endpointHintHtml')}</div>
     </div>
   </div>
 
   <div class="field">
-    <label for="token">API Token <span style="color:var(--vscode-errorForeground)">*</span></label>
-    <input id="token" type="password" placeholder="dt0c01.XXXXXXXXXX… (deixe em branco para manter o atual)" autocomplete="new-password">
-    <div class="hint">Scopes: <code>openTelemetryTrace.ingest</code> + <code>metrics.ingest</code> · Armazenado no keychain do SO</div>
+    <label for="token"><span data-i18n="tokenLabel">${L('tokenLabel')}</span> <span style="color:var(--vscode-errorForeground)">*</span></label>
+    <input id="token" type="password" placeholder="${L('tokenPlaceholder')}" data-i18n-placeholder="tokenPlaceholder" autocomplete="new-password">
+    <div class="hint" data-i18n-html="tokenHintHtml">${L('tokenHintHtml')}</div>
   </div>
 
   <div class="field">
-    <label for="email">Email do desenvolvedor</label>
-    <input id="email" type="text" placeholder="dev@empresa.com (opcional)" autocomplete="off">
-    <div class="hint">Aparece nos spans para identificar o dev nos relatórios</div>
+    <label for="email" data-i18n="emailLabel">${L('emailLabel')}</label>
+    <input id="email" type="text" placeholder="${L('emailPlaceholder')}" data-i18n-placeholder="emailPlaceholder" autocomplete="off">
+    <div class="hint" data-i18n="emailHint">${L('emailHint')}</div>
   </div>
 </section>
 
 <section>
-  <h2>Coleta</h2>
+  <h2 data-i18n="secColeta">${L('secColeta')}</h2>
 
   <div class="checkbox-row" id="rowCapture">
     <input type="checkbox" id="capturePrompts">
     <div>
-      <div class="lbl">Capturar conteúdo de prompts e respostas</div>
-      <div class="hint">Envia Input/Output nos spans (visível no Prompts stream). Desabilitado por padrão para privacidade.</div>
+      <div class="lbl" data-i18n="captureLabel">${L('captureLabel')}</div>
+      <div class="hint" data-i18n="captureHint">${L('captureHint')}</div>
     </div>
   </div>
 
   <div class="checkbox-row disabled" id="rowEvals">
     <input type="checkbox" id="evalsEnabled" disabled>
     <div>
-      <div class="lbl">Habilitar Dynatrace Evals (dt-evals)</div>
-      <div class="hint">Requer "Capturar prompts" habilitado. Instala <code>@dynatrace-oss/dt-evals</code> e avalia spans gen_ai.*</div>
+      <div class="lbl" data-i18n="evalsCheckboxLabel">${L('evalsCheckboxLabel')}</div>
+      <div class="hint" data-i18n-html="evalsCheckboxHintHtml">${L('evalsCheckboxHintHtml')}</div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>Portas do coletor local</h2>
+  <h2 data-i18n="secPorts">${L('secPorts')}</h2>
   <div class="row-2">
     <div class="field">
-      <label for="collectorPort">Porta OTLP HTTP</label>
+      <label for="collectorPort" data-i18n="collectorPortLabel">${L('collectorPortLabel')}</label>
       <input id="collectorPort" type="number" min="1024" max="65535" value="4318">
-      <div class="hint">Recebe spans da extensão e do hook. Porta alternativa é encontrada automaticamente se ocupada.</div>
+      <div class="hint" data-i18n="collectorPortHint">${L('collectorPortHint')}</div>
     </div>
     <div class="field">
-      <label for="healthPort">Porta Health Check</label>
+      <label for="healthPort" data-i18n="healthPortLabel">${L('healthPortLabel')}</label>
       <input id="healthPort" type="number" min="1024" max="65535" value="13133">
-      <div class="hint">Porta alternativa é encontrada automaticamente se ocupada.</div>
+      <div class="hint" data-i18n="healthPortHint">${L('healthPortHint')}</div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>Atributos customizados</h2>
+  <h2 data-i18n="secAttrs">${L('secAttrs')}</h2>
   <table class="attr-table">
-    <thead><tr><th style="width:40%">Chave</th><th>Valor</th><th style="width:40px"></th></tr></thead>
+    <thead><tr><th style="width:40%" data-i18n="attrKeyHeader">${L('attrKeyHeader')}</th><th data-i18n="attrValHeader">${L('attrValHeader')}</th><th style="width:40px"></th></tr></thead>
     <tbody id="attrRows"></tbody>
   </table>
   <div class="attr-actions">
-    <button class="btn-add-attr" id="btnAddAttr">+ Adicionar atributo</button>
-    <button class="btn-primary" id="btnSaveAttrs" style="font-size:0.85em;padding:5px 14px;">Salvar / Atualizar atributos</button>
+    <button class="btn-add-attr" id="btnAddAttr" data-i18n="btnAddAttr">${L('btnAddAttr')}</button>
+    <button class="btn-primary" id="btnSaveAttrs" style="font-size:0.85em;padding:5px 14px;" data-i18n="btnSaveAttrs">${L('btnSaveAttrs')}</button>
   </div>
-  <div class="hint" style="margin-top:6px">Adicionados a todos os spans. Ex: <code>squad</code>, <code>cost_center</code>, <code>project</code>. O coletor reinicia automaticamente ao salvar.</div>
+  <div class="hint" style="margin-top:6px" data-i18n-html="attrsHintHtml">${L('attrsHintHtml')}</div>
   <div id="attr-banner"></div>
 </section>
 
 <div id="val-banner"></div>
 <div class="footer">
-  <button class="btn-primary" id="btnSave">Salvar configurações</button>
-  <button class="btn-secondary" id="btnValidate">Validar credenciais</button>
+  <button class="btn-primary" id="btnSave" data-i18n="btnSaveConfig">${L('btnSaveConfig')}</button>
+  <button class="btn-secondary" id="btnValidate" data-i18n="btnValidateCreds">${L('btnValidateCreds')}</button>
 </div>
 </div>
 
 <div id="paneColetor" class="tab-pane" role="tabpanel">
   <section>
-    <h2>Status</h2>
+    <h2 data-i18n="secStatus">${L('secStatus')}</h2>
     <div class="status-row">
       <span class="status-dot" id="statusDot" aria-hidden="true"></span>
-      <span id="statusText">Verificando...</span>
+      <span id="statusText" data-i18n="statusChecking">${L('statusChecking')}</span>
     </div>
     <div class="btn-row">
-      <button class="btn-primary" id="btnStart">Iniciar</button>
-      <button class="btn-secondary" id="btnStop">Parar</button>
-      <button class="btn-secondary" id="btnRestart">Reiniciar</button>
+      <button class="btn-primary" id="btnStart" data-i18n="btnStart">${L('btnStart')}</button>
+      <button class="btn-secondary" id="btnStop" data-i18n="btnStop">${L('btnStop')}</button>
+      <button class="btn-secondary" id="btnRestart" data-i18n="btnRestart">${L('btnRestart')}</button>
     </div>
   </section>
   <section>
     <div class="log-toolbar">
-      <h2 style="margin-bottom:0">Log do coletor</h2>
+      <h2 style="margin-bottom:0" data-i18n="secCollectorLog">${L('secCollectorLog')}</h2>
       <div>
-        <button class="btn-link" id="btnRefreshLog">Atualizar</button>
-        <button class="btn-link" id="btnScrollBottom">Ir ao fim</button>
-        <button class="btn-link" id="btnClearLog">Limpar</button>
+        <button class="btn-link" id="btnRefreshLog" data-i18n="btnRefreshLog">${L('btnRefreshLog')}</button>
+        <button class="btn-link" id="btnScrollBottom" data-i18n="btnScrollBottom">${L('btnScrollBottom')}</button>
+        <button class="btn-link" id="btnClearLog" data-i18n="btnClearLog">${L('btnClearLog')}</button>
       </div>
     </div>
     <pre id="logBox" aria-live="polite"></pre>
-    <div class="hint" style="margin-top:6px">Até 300 linhas, atualizadas em tempo real.</div>
+    <div class="hint" style="margin-top:6px" data-i18n="logHint">${L('logHint')}</div>
   </section>
 </div>
 
 <div id="paneEvals" class="tab-pane" role="tabpanel">
   <section>
-    <h2>Dynatrace Evals</h2>
+    <h2 data-i18n="secEvals">${L('secEvals')}</h2>
     <div class="checkbox-row" id="rowEvalsTab">
       <input type="checkbox" id="evalsEnabledTab">
       <div>
-        <div class="lbl">Habilitar Dynatrace Evals</div>
-        <div class="hint">Avalia spans gen_ai.* com os evaluators configurados.</div>
+        <div class="lbl" data-i18n="evalsEnableLabel">${L('evalsEnableLabel')}</div>
+        <div class="hint" data-i18n="evalsEnableHint">${L('evalsEnableHint')}</div>
       </div>
     </div>
-    <div id="evalsCaptureWarn" class="hint warning" style="display:none">
-      Habilite "Capturar prompts" na aba Configurações para usar os Evals.
+    <div id="evalsCaptureWarn" class="hint warning" style="display:none" data-i18n="evalsCaptureWarn">
+      ${L('evalsCaptureWarn')}
     </div>
   </section>
   <section>
-    <h2>Ações</h2>
+    <h2 data-i18n="secActions">${L('secActions')}</h2>
     <div class="eval-actions">
-      <button class="btn-secondary" id="btnInstallEvals">Instalar dt-evals</button>
-      <button class="btn-secondary" id="btnConfigureEvals">Abrir wizard de configuração</button>
-      <button class="btn-primary" id="btnRunEvals">Rodar Evals</button>
-      <button class="btn-secondary" id="btnValidateEvals">Validar setup</button>
+      <button class="btn-secondary" id="btnInstallEvals" data-i18n="btnInstallEvals">${L('btnInstallEvals')}</button>
+      <button class="btn-secondary" id="btnConfigureEvals" data-i18n="btnConfigureEvals">${L('btnConfigureEvals')}</button>
+      <button class="btn-primary" id="btnRunEvals" data-i18n="btnRunEvals">${L('btnRunEvals')}</button>
+      <button class="btn-secondary" id="btnValidateEvals" data-i18n="btnValidateEvals">${L('btnValidateEvals')}</button>
     </div>
-    <div class="hint" style="margin-top:14px">As ações são abertas no terminal integrado.</div>
+    <div class="hint" style="margin-top:14px" data-i18n="evalsActionsHint">${L('evalsActionsHint')}</div>
   </section>
 </div>
 
@@ -551,6 +582,45 @@ export class ConfigPanel {
   var vscode = acquireVsCodeApi();
   var endpointMode = 'tenant';
   var collectorLogLines = [];
+  var I18N = ${i18nJson};
+  var currentLang = ${JSON.stringify(lang)};
+  var collectorState = 'stopped';
+
+  function t(key) {
+    var dict = I18N[currentLang] || I18N['pt-BR'];
+    return (dict && dict[key]) || (I18N['pt-BR'][key]) || key;
+  }
+
+  function applyLanguage(newLang) {
+    currentLang = I18N[newLang] ? newLang : 'pt-BR';
+    document.documentElement.setAttribute('lang', currentLang);
+
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+      el.innerHTML = t(el.getAttribute('data-i18n-html'));
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+      el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+    });
+
+    document.querySelectorAll('.attr-key-input').forEach(function(el) { el.placeholder = t('attrKeyPlaceholder'); });
+    document.querySelectorAll('.attr-val-input').forEach(function(el) { el.placeholder = t('attrValPlaceholder'); });
+    document.querySelectorAll('.btn-remove').forEach(function(el) { el.title = t('attrRemoveTitle'); });
+
+    var tokenInput = document.getElementById('token');
+    if (tokenInput.dataset.hasToken === '1') { tokenInput.placeholder = t('tokenSavedPlaceholder'); }
+
+    document.getElementById('statusText').textContent = collectorState === 'running' ? t('statusRunning') : t('statusStopped');
+
+    document.getElementById('langSelect').value = currentLang;
+  }
+
+  document.getElementById('langSelect').addEventListener('change', function() {
+    applyLanguage(this.value);
+    vscode.postMessage({ command: 'saveLanguage', language: this.value });
+  });
 
   function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(function(button) { button.classList.remove('active'); });
@@ -614,9 +684,9 @@ export class ConfigPanel {
     var tdKey = document.createElement('td');
     var tdVal = document.createElement('td');
     var tdDel = document.createElement('td');
-    var inKey = document.createElement('input'); inKey.type = 'text'; inKey.placeholder = 'chave'; inKey.value = key;
-    var inVal = document.createElement('input'); inVal.type = 'text'; inVal.placeholder = 'valor'; inVal.value = val;
-    var btn   = document.createElement('button'); btn.className = 'btn-remove'; btn.textContent = '✕'; btn.title = 'Remover';
+    var inKey = document.createElement('input'); inKey.type = 'text'; inKey.className = 'attr-key-input'; inKey.placeholder = t('attrKeyPlaceholder'); inKey.value = key;
+    var inVal = document.createElement('input'); inVal.type = 'text'; inVal.className = 'attr-val-input'; inVal.placeholder = t('attrValPlaceholder'); inVal.value = val;
+    var btn   = document.createElement('button'); btn.className = 'btn-remove'; btn.textContent = '✕'; btn.title = t('attrRemoveTitle');
     btn.addEventListener('click', function() { tr.remove(); });
     tdKey.appendChild(inKey); tdVal.appendChild(inVal); tdDel.appendChild(btn);
     tr.appendChild(tdKey); tr.appendChild(tdVal); tr.appendChild(tdDel);
@@ -655,7 +725,7 @@ export class ConfigPanel {
     var endpoint = getEndpoint();
     var token    = document.getElementById('token').value.trim();
     if (!endpoint || !token) {
-      showBanner('error', '✗ Preencha o Endpoint (ou Tenant ID) e o Token para validar.');
+      showBanner('error', t('bannerFillRequired'));
       return;
     }
     vscode.postMessage({ command: 'validate', endpoint: endpoint, token: token });
@@ -664,11 +734,11 @@ export class ConfigPanel {
   document.getElementById('btnSave').addEventListener('click', function() {
     var endpoint = getEndpoint();
     if (!endpoint) {
-      showBanner('error', '✗ Endpoint ou Tenant ID é obrigatório.');
+      showBanner('error', t('bannerEndpointRequired'));
       return;
     }
     document.getElementById('btnSave').disabled = true;
-    showBanner('validating', '⏳ Validando credenciais e salvando...');
+    showBanner('validating', t('bannerValidatingSave'));
     vscode.postMessage({
       command: 'save',
       data: {
@@ -701,15 +771,15 @@ export class ConfigPanel {
   }
 
   document.getElementById('btnStart').addEventListener('click', function() {
-    setCollectorBusy(true, 'Iniciando...');
+    setCollectorBusy(true, t('statusStarting'));
     vscode.postMessage({ command: 'startCollector' });
   });
   document.getElementById('btnStop').addEventListener('click', function() {
-    setCollectorBusy(true, 'Parando...');
+    setCollectorBusy(true, t('statusStopping'));
     vscode.postMessage({ command: 'stopCollector' });
   });
   document.getElementById('btnRestart').addEventListener('click', function() {
-    setCollectorBusy(true, 'Reiniciando...');
+    setCollectorBusy(true, t('statusRestarting'));
     vscode.postMessage({ command: 'restartCollector' });
   });
   document.getElementById('btnRefreshLog').addEventListener('click', function() {
@@ -740,8 +810,9 @@ export class ConfigPanel {
   window.addEventListener('message', function(e) {
     var msg = e.data;
     if (msg.command === 'collectorStatus') {
-      document.getElementById('statusDot').className = 'status-dot ' + (msg.running ? 'running' : 'stopped');
-      document.getElementById('statusText').textContent = msg.running ? 'Rodando' : 'Parado';
+      collectorState = msg.running ? 'running' : 'stopped';
+      document.getElementById('statusDot').className = 'status-dot ' + collectorState;
+      document.getElementById('statusText').textContent = msg.running ? t('statusRunning') : t('statusStopped');
       setCollectorBusy(false, '');
       if (msg.logLines) {
         collectorLogLines = msg.logLines.slice(-300);
@@ -756,31 +827,33 @@ export class ConfigPanel {
       renderCollectorLog(nearBottom);
     }
     if (msg.command === 'init')             { populate(msg.data); }
-    if (msg.command === 'validating')       { showBanner('validating', '⏳ Validando credenciais…'); }
+    if (msg.command === 'validating')       { showBanner('validating', t('bannerValidatingOnly')); }
     if (msg.command === 'validationResult') {
-      if (msg.valid) { showBanner('ok', '✓ Credenciais válidas.'); }
-      else           { showBanner('error', '✗ ' + msg.error); }
+      if (msg.valid) { showBanner('ok', t('bannerCredsValid')); }
+      else           { showBanner('error', t('bannerCrossPrefix') + msg.error); }
     }
     if (msg.command === 'saveResult') {
       document.getElementById('btnSave').disabled = false;
-      if (msg.success) { showBanner('ok', '✓ Credenciais validadas e configurações salvas. Coletor reiniciando…'); }
-      else             { showBanner('error', '✗ ' + msg.error); }
+      if (msg.success) { showBanner('ok', t('bannerSaveSuccess')); }
+      else             { showBanner('error', t('bannerCrossPrefix') + msg.error); }
     }
     if (msg.command === 'saveAttrsResult') {
       document.getElementById('btnSaveAttrs').disabled = false;
       var ab = document.getElementById('attr-banner');
       if (msg.success) {
         ab.className = 'ok';
-        ab.textContent = '✓ Atributos salvos. Coletor reiniciando automaticamente…';
+        ab.textContent = t('bannerAttrsSuccess');
       } else {
         ab.className = 'error';
-        ab.textContent = '✗ Erro ao salvar atributos: ' + msg.error;
+        ab.textContent = t('bannerAttrsErrorPrefix') + msg.error;
       }
       setTimeout(function() { ab.className = ''; ab.style.display = 'none'; }, 5000);
     }
   });
 
   function populate(d) {
+    if (d.language && d.language !== currentLang) { applyLanguage(d.language); }
+
     if (d.isStdUrl && d.tenantId) {
       setMode('tenant');
       document.getElementById('tenantId').value = d.tenantId;
@@ -791,7 +864,8 @@ export class ConfigPanel {
     }
 
     if (d.hasToken) {
-      document.getElementById('token').placeholder = '●●●●●●●● (token salvo — deixe em branco para manter)';
+      document.getElementById('token').dataset.hasToken = '1';
+      document.getElementById('token').placeholder = t('tokenSavedPlaceholder');
     }
     document.getElementById('email').value            = d.email || '';
     document.getElementById('capturePrompts').checked  = !!d.capturePrompts;
@@ -822,7 +896,11 @@ export class ConfigPanel {
     }
 }
 
-export function validateDynatraceCredentials(endpoint: string, token: string): Promise<{ valid: boolean; error?: string }> {
+export function validateDynatraceCredentials(
+    endpoint: string,
+    token: string,
+    lang: Language = DEFAULT_LANGUAGE
+): Promise<{ valid: boolean; error?: string }> {
     return new Promise((resolve) => {
         try {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -841,16 +919,16 @@ export function validateDynatraceCredentials(endpoint: string, token: string): P
                 },
             }, (res: import('http').IncomingMessage) => {
                 if (res.statusCode === 200)      { resolve({ valid: true }); }
-                else if (res.statusCode === 401) { resolve({ valid: false, error: 'Token inválido — verifique se está correto.' }); }
-                else if (res.statusCode === 403) { resolve({ valid: false, error: 'Token sem os scopes: openTelemetryTrace.ingest + metrics.ingest.' }); }
-                else                             { resolve({ valid: false, error: `Endpoint respondeu HTTP ${res.statusCode} — verifique a URL.` }); }
+                else if (res.statusCode === 401) { resolve({ valid: false, error: t(lang, 'errInvalidToken') }); }
+                else if (res.statusCode === 403) { resolve({ valid: false, error: t(lang, 'errMissingScopes') }); }
+                else                             { resolve({ valid: false, error: tf(lang, 'errHttpStatus', String(res.statusCode)) }); }
             });
-            req.on('error', (err: Error) => resolve({ valid: false, error: `Não foi possível conectar: ${err.message}` }));
-            req.setTimeout(8000, () => { req.destroy(); resolve({ valid: false, error: 'Timeout — verifique a URL e sua conexão.' }); });
+            req.on('error', (err: Error) => resolve({ valid: false, error: tf(lang, 'errConnect', err.message) }));
+            req.setTimeout(8000, () => { req.destroy(); resolve({ valid: false, error: t(lang, 'errTimeout') }); });
             req.write(body);
             req.end();
         } catch (err) {
-            resolve({ valid: false, error: `URL inválida: ${err}` });
+            resolve({ valid: false, error: tf(lang, 'errInvalidUrl', String(err)) });
         }
     });
 }
