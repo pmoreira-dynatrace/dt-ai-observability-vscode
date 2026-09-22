@@ -1,9 +1,5 @@
 # Dynatrace AI Observability — VS Code Extension
 
-[![Latest Release](https://img.shields.io/github/v/release/pmoreira-dynatrace/dt-ai-observability-vscode?label=Download%20latest%20release&sort=semver&style=for-the-badge&logo=github)](https://github.com/pmoreira-dynatrace/dt-ai-observability-vscode/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/pmoreira-dynatrace/dt-ai-observability-vscode/total?label=Downloads&style=for-the-badge&logo=github&logoColor=white&color=2EA44F)](https://github.com/pmoreira-dynatrace/dt-ai-observability-vscode/releases)
-![Made in Brazil](https://img.shields.io/badge/made%20in-Brazil-FEDF00?style=for-the-badge&labelColor=009739)
-
 Observe AI assistant usage (GitHub Copilot Chat, Claude Code) via OpenTelemetry and send traces directly to Dynatrace — with no Docker, no manual collector setup, and no extra infrastructure.
 
 ```
