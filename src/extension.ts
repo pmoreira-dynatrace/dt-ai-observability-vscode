@@ -14,7 +14,7 @@ let evalsManager: EvalsManager;
 export async function activate(context: vscode.ExtensionContext) {
     statusBarManager = new StatusBarManager();
 
-    const outputChannel = vscode.window.createOutputChannel('AI Governance');
+    const outputChannel = vscode.window.createOutputChannel('Dynatrace AI Governance');
     const ts = () => new Date().toISOString();
     setLogger((msg) => outputChannel.appendLine(`[${ts()}] ${msg}`));
 

@@ -1,14 +1,20 @@
 {
   "name": "dt-ai-observability",
-  "displayName": "AI Governance",
+  "displayName": "Dynatrace AI Governance",
   "description": "Collects AI usage traces (GitHub Copilot, Claude Code) and sends them to Dynatrace via OpenTelemetry.",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "publisher": "dynatrace",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dynatrace/dt-ai-observability-vscode"
+    "url": "https://github.com/pmoreira-dynatrace/dt-ai-observability-vscode"
   },
   "license": "MIT",
+  "icon": "resources/icon.png",
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#141826",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.99.0"
   },
@@ -20,7 +26,9 @@
     "opentelemetry",
     "otel",
     "copilot",
+    "claude code",
     "observability",
+    "ai governance",
     "ai"
   ],
   "activationEvents": [
@@ -31,51 +39,51 @@
     "commands": [
       {
         "command": "dt-ai-obs.start",
-        "title": "AI Governance: Start Collector"
+        "title": "Dynatrace AI Governance: Start Collector"
       },
       {
         "command": "dt-ai-obs.stop",
-        "title": "AI Governance: Stop Collector"
+        "title": "Dynatrace AI Governance: Stop Collector"
       },
       {
         "command": "dt-ai-obs.configure",
-        "title": "AI Governance: Configure Credentials"
+        "title": "Dynatrace AI Governance: Configure Credentials"
       },
       {
         "command": "dt-ai-obs.status",
-        "title": "AI Governance: View Status"
+        "title": "Dynatrace AI Governance: View Status"
       },
       {
         "command": "dt-ai-obs.configureClaudeHooks",
-        "title": "AI Governance: Configure Claude Code Hooks"
+        "title": "Dynatrace AI Governance: Configure Claude Code Hooks"
       },
       {
         "command": "dt-ai-obs.removeClaudeHooks",
-        "title": "AI Governance: Remove Claude Code Hooks"
+        "title": "Dynatrace AI Governance: Remove Claude Code Hooks"
       },
       {
         "command": "dt-ai-obs.manageAttributes",
-        "title": "AI Governance: Manage Custom Attributes"
+        "title": "Dynatrace AI Governance: Manage Custom Attributes"
       },
       {
         "command": "dt-ai-obs.evalsConfigure",
-        "title": "AI Governance: Configure Evals (dt-evals)"
+        "title": "Dynatrace AI Governance: Configure Evals (dt-evals)"
       },
       {
         "command": "dt-ai-obs.evalsRun",
-        "title": "AI Governance: Run Evals (e.g. Prompt Injection)"
+        "title": "Dynatrace AI Governance: Run Evals (e.g. Prompt Injection)"
       },
       {
         "command": "dt-ai-obs.evalsValidate",
-        "title": "AI Governance: Validate Evals Setup"
+        "title": "Dynatrace AI Governance: Validate Evals Setup"
       },
       {
         "command": "dt-ai-obs.evalsStatus",
-        "title": "AI Governance: View Evals Status"
+        "title": "Dynatrace AI Governance: View Evals Status"
       }
     ],
     "configuration": {
-      "title": "AI Governance",
+      "title": "Dynatrace AI Governance",
       "properties": {
         "dynatraceAiObs.endpoint": {
           "type": "string",

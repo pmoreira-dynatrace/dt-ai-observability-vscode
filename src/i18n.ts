@@ -14,7 +14,7 @@ export type Dict = Record<string, string>;
 export const translations: Record<Language, Dict> = {
     'pt-BR': {
         // Header
-        appTitle: 'AI Governance',
+        appTitle: 'Dynatrace AI Governance',
         appSubtitle: 'Configure credenciais, gerencie o coletor e acesse os Evals.',
         langSelectLabel: 'Idioma',
         madeInBrazil: 'Feito no Brasil',
@@ -119,14 +119,14 @@ export const translations: Record<Language, Dict> = {
         errInvalidCredentialsPrefix: 'Credenciais inválidas: ',
 
         // First-run prompt (shown outside the panel)
-        firstRunPrompt: 'AI Governance: configure suas credenciais para começar.',
+        firstRunPrompt: 'Dynatrace AI Governance: configure suas credenciais para começar.',
         firstRunConfigureNow: 'Configurar Agora',
         firstRunLater: 'Depois',
     },
 
     en: {
         // Header
-        appTitle: 'AI Governance',
+        appTitle: 'Dynatrace AI Governance',
         appSubtitle: 'Configure credentials, manage the collector, and access Evals.',
         langSelectLabel: 'Language',
         madeInBrazil: 'Made in Brazil',
@@ -231,14 +231,14 @@ export const translations: Record<Language, Dict> = {
         errInvalidCredentialsPrefix: 'Invalid credentials: ',
 
         // First-run prompt (shown outside the panel)
-        firstRunPrompt: 'AI Governance: configure your credentials to get started.',
+        firstRunPrompt: 'Dynatrace AI Governance: configure your credentials to get started.',
         firstRunConfigureNow: 'Configure Now',
         firstRunLater: 'Later',
     },
 
     es: {
         // Header
-        appTitle: 'AI Governance',
+        appTitle: 'Dynatrace AI Governance',
         appSubtitle: 'Configure credenciales, gestione el colector y acceda a Evals.',
         langSelectLabel: 'Idioma',
         madeInBrazil: 'Hecho en Brasil',
@@ -343,7 +343,7 @@ export const translations: Record<Language, Dict> = {
         errInvalidCredentialsPrefix: 'Credenciales inválidas: ',
 
         // First-run prompt (shown outside the panel)
-        firstRunPrompt: 'AI Governance: configure sus credenciales para comenzar.',
+        firstRunPrompt: 'Dynatrace AI Governance: configure sus credenciales para comenzar.',
         firstRunConfigureNow: 'Configurar ahora',
         firstRunLater: 'Más tarde',
     },
