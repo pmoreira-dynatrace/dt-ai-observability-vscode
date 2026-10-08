@@ -3,7 +3,7 @@
   "displayName": "Dynatrace AI Governance",
   "description": "Collects AI usage traces (GitHub Copilot, Claude Code) and sends them to Dynatrace via OpenTelemetry.",
   "version": "1.9.0",
-  "publisher": "DynatraceExtensionCommunity",
+  "publisher": "dynatrace",
   "repository": {
     "type": "git",
     "url": "https://github.com/pmoreira-dynatrace/dt-ai-observability-vscode"
