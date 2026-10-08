@@ -14,9 +14,10 @@ export type Dict = Record<string, string>;
 export const translations: Record<Language, Dict> = {
     'pt-BR': {
         // Header
-        appTitle: 'Dynatrace AI Observability',
+        appTitle: 'AI Governance',
         appSubtitle: 'Configure credenciais, gerencie o coletor e acesse os Evals.',
         langSelectLabel: 'Idioma',
+        madeInBrazil: 'Feito no Brasil',
 
         // Tabs
         tabConfig: 'Configurações',
@@ -116,13 +117,19 @@ export const translations: Record<Language, Dict> = {
         errTimeout: 'Timeout — verifique a URL e sua conexão.',
         errInvalidUrl: 'URL inválida: {0}',
         errInvalidCredentialsPrefix: 'Credenciais inválidas: ',
+
+        // First-run prompt (shown outside the panel)
+        firstRunPrompt: 'AI Governance: configure suas credenciais para começar.',
+        firstRunConfigureNow: 'Configurar Agora',
+        firstRunLater: 'Depois',
     },
 
     en: {
         // Header
-        appTitle: 'Dynatrace AI Observability',
+        appTitle: 'AI Governance',
         appSubtitle: 'Configure credentials, manage the collector, and access Evals.',
         langSelectLabel: 'Language',
+        madeInBrazil: 'Made in Brazil',
 
         // Tabs
         tabConfig: 'Settings',
@@ -222,13 +229,19 @@ export const translations: Record<Language, Dict> = {
         errTimeout: 'Timeout — check the URL and your connection.',
         errInvalidUrl: 'Invalid URL: {0}',
         errInvalidCredentialsPrefix: 'Invalid credentials: ',
+
+        // First-run prompt (shown outside the panel)
+        firstRunPrompt: 'AI Governance: configure your credentials to get started.',
+        firstRunConfigureNow: 'Configure Now',
+        firstRunLater: 'Later',
     },
 
     es: {
         // Header
-        appTitle: 'Dynatrace AI Observability',
+        appTitle: 'AI Governance',
         appSubtitle: 'Configure credenciales, gestione el colector y acceda a Evals.',
         langSelectLabel: 'Idioma',
+        madeInBrazil: 'Hecho en Brasil',
 
         // Tabs
         tabConfig: 'Configuración',
@@ -328,6 +341,11 @@ export const translations: Record<Language, Dict> = {
         errTimeout: 'Tiempo de espera agotado — verifique la URL y su conexión.',
         errInvalidUrl: 'URL inválida: {0}',
         errInvalidCredentialsPrefix: 'Credenciales inválidas: ',
+
+        // First-run prompt (shown outside the panel)
+        firstRunPrompt: 'AI Governance: configure sus credenciales para comenzar.',
+        firstRunConfigureNow: 'Configurar ahora',
+        firstRunLater: 'Más tarde',
     },
 };
 

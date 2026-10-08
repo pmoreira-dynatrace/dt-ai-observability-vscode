@@ -5,6 +5,7 @@ import { configureCopilotOtel } from './settings';
 import { configureClaudeHooks, removeClaudeHooks, autoConfigureClaudeHooks, watchForClaudeDir, setLogger, writeAttrsFile, manageCustomAttributes } from './claudeHooks';
 import { EvalsManager } from './evals';
 import { ConfigPanel } from './configPanel';
+import { t, normalizeLanguage } from './i18n';
 
 let collectorManager: CollectorManager;
 let statusBarManager: StatusBarManager;
@@ -13,7 +14,7 @@ let evalsManager: EvalsManager;
 export async function activate(context: vscode.ExtensionContext) {
     statusBarManager = new StatusBarManager();
 
-    const outputChannel = vscode.window.createOutputChannel('Dynatrace AI Observability');
+    const outputChannel = vscode.window.createOutputChannel('AI Governance');
     const ts = () => new Date().toISOString();
     setLogger((msg) => outputChannel.appendLine(`[${ts()}] ${msg}`));
 
@@ -85,12 +86,13 @@ export async function activate(context: vscode.ExtensionContext) {
         await collectorManager.start();
         configureCopilotOtel();
     } else if (!(await hasCredentials(context))) {
+        const lang = normalizeLanguage(vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('language'));
         const action = await vscode.window.showInformationMessage(
-            'Dynatrace AI Observability: configure suas credenciais para começar.',
-            'Configurar Agora',
-            'Depois'
+            t(lang, 'firstRunPrompt'),
+            t(lang, 'firstRunConfigureNow'),
+            t(lang, 'firstRunLater')
         );
-        if (action === 'Configurar Agora') {
+        if (action === t(lang, 'firstRunConfigureNow')) {
             ConfigPanel.open(context, onConfigSaved, collectorManager, evalsManager);
         }
     }

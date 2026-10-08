@@ -21,9 +21,12 @@ export class ConfigPanel {
             ConfigPanel.currentPanel.panel.reveal(vscode.ViewColumn.One);
             return;
         }
+        const openLang = normalizeLanguage(
+            vscode.workspace.getConfiguration('dynatraceAiObs').get<string>('language')
+        );
         const panel = vscode.window.createWebviewPanel(
             'dtAiObsConfig',
-            'Dynatrace AI Observability — Configurações',
+            `${t(openLang, 'appTitle')} — ${t(openLang, 'tabConfig')}`,
             vscode.ViewColumn.One,
             { enableScripts: true, retainContextWhenHidden: true }
         );
@@ -230,12 +233,26 @@ export class ConfigPanel {
   .header { padding: 20px 32px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
   .header-text { flex: 1; min-width: 0; }
   .subtitle { color: var(--vscode-descriptionForeground); font-size: 0.92em; }
+  .header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-top: 2px; }
   .lang-select {
     background: var(--vscode-dropdown-background, var(--vscode-input-background));
     color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
     border: 1px solid var(--vscode-dropdown-border, var(--vscode-input-border, #555));
     border-radius: 2px; padding: 4px 8px; font-family: inherit; font-size: 0.85em;
-    cursor: pointer; flex-shrink: 0; margin-top: 2px;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .brazil-badge {
+    display: flex; align-items: stretch; border-radius: 3px; overflow: hidden;
+    font-size: 0.72em; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    flex-shrink: 0; line-height: 1;
+  }
+  .brazil-badge .flag {
+    background: #009739; display: flex; align-items: center; justify-content: center;
+    padding: 5px 6px; font-size: 1.2em; line-height: 1;
+  }
+  .brazil-badge .text {
+    background: #FEDF00; color: #1a3300; display: flex; align-items: center;
+    padding: 5px 8px;
   }
   .tab-bar {
     display: flex; border-bottom: 1px solid var(--vscode-panel-border, #444);
@@ -417,11 +434,17 @@ export class ConfigPanel {
     <h1 data-i18n="appTitle">${L('appTitle')}</h1>
     <p class="subtitle" data-i18n="appSubtitle">${L('appSubtitle')}</p>
   </div>
-  <select class="lang-select" id="langSelect" aria-label="${L('langSelectLabel')}">
-    <option value="pt-BR"${lang === 'pt-BR' ? ' selected' : ''}>Português (BR)</option>
-    <option value="en"${lang === 'en' ? ' selected' : ''}>English</option>
-    <option value="es"${lang === 'es' ? ' selected' : ''}>Español</option>
-  </select>
+  <div class="header-actions">
+    <span class="brazil-badge" title="${L('madeInBrazil')}" data-i18n-title="madeInBrazil">
+      <span class="flag" aria-hidden="true">🇧🇷</span>
+      <span class="text" data-i18n="madeInBrazil">${L('madeInBrazil')}</span>
+    </span>
+    <select class="lang-select" id="langSelect" aria-label="${L('langSelectLabel')}">
+      <option value="pt-BR"${lang === 'pt-BR' ? ' selected' : ''}>Português (BR)</option>
+      <option value="en"${lang === 'en' ? ' selected' : ''}>English</option>
+      <option value="es"${lang === 'es' ? ' selected' : ''}>Español</option>
+    </select>
+  </div>
 </div>
 
 <div class="tab-bar" role="tablist" aria-label="${L('tabBarAria')}">
@@ -603,6 +626,9 @@ export class ConfigPanel {
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
       el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+      el.title = t(el.getAttribute('data-i18n-title'));
     });
 
     document.querySelectorAll('.attr-key-input').forEach(function(el) { el.placeholder = t('attrKeyPlaceholder'); });
