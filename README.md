@@ -38,6 +38,8 @@ VS Code / Cursor
 
 ## 📑 Table of contents
 
+<div align="center">
+
 | | |
 |---|---|
 | 🔧 [Prerequisites](#prerequisites) | 📦 [Installation (end users)](#installation-end-users) |
@@ -47,6 +49,8 @@ VS Code / Cursor
 | 🖱️ [Cursor](#cursor) | 🛠️ [Troubleshooting](#troubleshooting) |
 | 🏗️ [Building from source](#building-from-source) | 🔒 [Privacy and security](#privacy-and-security) |
 | 📄 [License](#license) | |
+
+</div>
 
 ---
 
@@ -315,11 +319,15 @@ On first activation the extension automatically downloads the OTel Collector bin
 
 **Status bar** (bottom-right corner):
 
+<div align="center">
+
 | Icon | Meaning |
 |---|---|
 | `⊙ AI Gov` (orange) | Stopped or not configured |
 | `↺ AI Gov` (spinning) | Starting / downloading binary |
 | `● AI Gov` (normal) | Running and collecting |
+
+</div>
 
 **Check the collector process:**
 ```bash
@@ -362,12 +370,16 @@ Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS 
 
 **Example use cases:**
 
+<div align="center">
+
 | Key | Value | Purpose |
 |---|---|---|
 | `squad` | `platform` | Filter by team in Dynatrace |
 | `cost_center` | `cc-1234` | Chargeback reporting |
 | `project` | `migration-v2` | Project-level attribution |
 | `environment` | `staging` | Environment tagging |
+
+</div>
 
 ---
 
@@ -380,6 +392,8 @@ You may notice that a short question like *"What is the strongest Pokémon in th
 
 When you send a message in GitHub Copilot Chat or Claude Code, the AI assistant does not receive just your question. It sends a complete API payload to the LLM that includes:
 
+<div align="center">
+
 | Component | Tokens (approx.) |
 |---|---|
 | System prompt (assistant instructions, behavior rules) | 5,000 – 10,000 |
@@ -388,6 +402,8 @@ When you send a message in GitHub Copilot Chat or Claude Code, the AI assistant 
 | Conversation history (previous turns) | variable |
 | Your actual question | 10 – 200 |
 | **Total per request** | **15,000 – 30,000+** |
+
+</div>
 
 The Copilot Chat UI shows only your message's token count. The OpenAI tokenizer counts only what you paste into it. **Dynatrace shows the real number** — the full payload sent to the LLM API, which is what actually gets billed.
 
