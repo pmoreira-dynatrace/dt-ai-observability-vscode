@@ -1,6 +1,20 @@
-# Dynatrace AI Observability — VS Code Extension
+<p align="center">
+  <img src="resources/icon.png" width="120" alt="Dynatrace AI Governance logo">
+</p>
 
-Observe AI assistant usage (GitHub Copilot Chat, Claude Code) via OpenTelemetry and send traces directly to Dynatrace — with no Docker, no manual collector setup, and no extra infrastructure.
+<h1 align="center">Dynatrace AI Governance</h1>
+<p align="center"><em>VS Code Extension — formerly "Dynatrace AI Observability"</em></p>
+
+<p align="center">
+  Observe AI assistant usage (GitHub Copilot Chat, Claude Code) via OpenTelemetry and send traces directly to Dynatrace — <strong>no Docker, no manual collector setup, no extra infrastructure.</strong>
+</p>
+
+<p align="center"><img src="docs/images/marketplace-listing.png" width="820" alt="Dynatrace AI Governance listed on the VS Code Marketplace"></p>
+<p align="center"><sub>✅ Live on the Visual Studio Code Marketplace, published under the <strong>Dynatrace Extension Community</strong> publisher.</sub></p>
+
+---
+
+### How it works
 
 ```
 VS Code / Cursor
@@ -22,35 +36,49 @@ VS Code / Cursor
 
 ---
 
-## Table of contents
+## 📑 Table of contents
 
-- [Prerequisites](#prerequisites)
-  - [Dynatrace tenant](#dynatrace-tenant)
-  - [Developer machine](#developer-machine)
-- [Installation (end users)](#installation-end-users)
-- [Custom attributes](#custom-attributes)
-- [Understanding token counts](#understanding-token-counts)
-- [Validating data in Dynatrace](#validating-data-in-dynatrace)
-- [DQL Dashboard for Claude Code](#dql-dashboard-for-claude-code)
-- [Available commands](#available-commands)
-- [Extension settings](#extension-settings)
-- [Cursor](#cursor)
-- [Troubleshooting](#troubleshooting)
-- [Building from source](#building-from-source)
-- [Privacy and security](#privacy-and-security)
-- [License](#license)
+| | |
+|---|---|
+| 🔧 [Prerequisites](#prerequisites) | 📦 [Installation (end users)](#installation-end-users) |
+| 🏷️ [Custom attributes](#custom-attributes) | 🔢 [Understanding token counts](#understanding-token-counts) |
+| ✅ [Validating data in Dynatrace](#validating-data-in-dynatrace) | 📊 [DQL Dashboard for Claude Code](#dql-dashboard-for-claude-code) |
+| ⌨️ [Available commands](#available-commands) | ⚙️ [Extension settings](#extension-settings) |
+| 🖱️ [Cursor](#cursor) | 🛠️ [Troubleshooting](#troubleshooting) |
+| 🏗️ [Building from source](#building-from-source) | 🔒 [Privacy and security](#privacy-and-security) |
+| 📄 [License](#license) | |
 
 ---
 
-## Prerequisites
+## 🔧 Prerequisites
 
-### Dynatrace tenant
+<table>
+<tr><th align="left">🏢 Dynatrace tenant</th><th align="left">💻 Developer machine</th></tr>
+<tr valign="top">
+<td>
 
 | Requirement | Detail |
 |---|---|
-| Tenant type | SaaS Latest or Managed with Grail enabled |
-| App | AI & LLM Observability (install from Hub) |
-| API token | Scopes: `openTelemetryTrace.ingest` + `metrics.ingest` |
+| Tenant type | SaaS Latest or Managed, Grail enabled |
+| App | AI & LLM Observability (from Hub) |
+| API token | `openTelemetryTrace.ingest` + `metrics.ingest` |
+
+</td>
+<td>
+
+| Requirement | Minimum |
+|---|---|
+| RAM / Disk | 4 GB / 200 MB free |
+| OS | macOS 10.15+, Win 10 1803+, Linux (modern) |
+| IDE | VS Code 1.99+ or Cursor 0.40+ |
+
+</td>
+</tr>
+</table>
+
+> 💡 Full details — including network/firewall rules for corporate environments — are in the collapsible sections below. Nothing here is skippable: a missing scope or a blocked domain causes **silent failures** (no error shown, data just stops flowing).
+
+### Dynatrace tenant
 
 <details>
 <summary><strong>Instalar o app de AI Observability</strong></summary>
@@ -205,7 +233,7 @@ No VPN split-tunnel changes required.
 
 ---
 
-## Installation (end users)
+## 📦 Installation (end users)
 
 ### Step 1 — Get the VSIX file
 
@@ -234,7 +262,7 @@ code --install-extension dt-ai-observability.vsix
 
 ### Step 3 — Configure credentials
 
-On first launch, a prompt appears. Click **Configurar Agora** to open the unified management panel. You can reopen it at any time with `Cmd+Shift+P` → **Dynatrace AI Obs: Configurar Credenciais**.
+On first launch, a prompt appears. Click **Configurar Agora** to open the unified management panel. You can reopen it at any time with `Cmd+Shift+P` → **Dynatrace AI Governance: Configure Credentials**.
 
 <details open>
 <summary><strong>Configuration tab</strong></summary>
@@ -310,9 +338,9 @@ On first activation the extension automatically downloads the OTel Collector bin
 
 | Icon | Meaning |
 |---|---|
-| `⊙ DT OTel` (orange) | Stopped or not configured |
-| `↺ DT OTel` (spinning) | Starting / downloading binary |
-| `● DT OTel` (normal) | Running and collecting |
+| `⊙ AI Gov` (orange) | Stopped or not configured |
+| `↺ AI Gov` (spinning) | Starting / downloading binary |
+| `● AI Gov` (normal) | Running and collecting |
 
 **Check the collector process:**
 ```bash
@@ -322,7 +350,7 @@ curl http://localhost:13133
 
 **Check the Output panel:**
 
-`View → Output → Dynatrace AI Observability`
+`View → Output → Dynatrace AI Governance`
 
 You should see:
 ```
@@ -333,13 +361,13 @@ You should see:
 
 ---
 
-## Custom attributes
+## 🏷️ Custom attributes
 
 Add custom span attributes (squad, cost center, project, etc.) to every Claude Code and Copilot span without editing JSON files.
 
 **Via Quick Pick UI (recommended):**
 
-`Cmd+Shift+P` → **Dynatrace AI Obs: Gerenciar Atributos Customizados**
+`Cmd+Shift+P` → **Dynatrace AI Governance: Manage Custom Attributes**
 
 The command opens an interactive menu:
 - **Add attribute** — type the key, then the value
@@ -363,7 +391,7 @@ Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS 
 
 ---
 
-## Understanding token counts
+## 🔢 Understanding token counts
 
 ### Why Dynatrace shows far more tokens than expected
 
@@ -386,7 +414,7 @@ This is the core value of this observability extension: each question that looks
 
 ---
 
-## Validating data in Dynatrace
+## ✅ Validating data in Dynatrace
 
 ### AI & LLM Observability app
 
@@ -505,7 +533,7 @@ fetch spans, from:now()-1h
 
 ---
 
-## DQL Dashboard for Claude Code
+## 📊 DQL Dashboard for Claude Code
 
 Save as a **Notebook** in Dynatrace (Menu → Notebooks → New) to get a persistent dashboard equivalent to the AI Obs Prompts stream.
 
@@ -513,27 +541,29 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 
 ---
 
-## Available commands
+## ⌨️ Available commands
 
 `Cmd+Shift+P` (or `Ctrl+Shift+P` on Windows/Linux):
 
 | Command | Description |
 |---|---|
-| `Dynatrace AI Obs: Configurar Credenciais` | Set or update endpoint and API token |
-| `Dynatrace AI Obs: Iniciar Coletor` | Start the collector manually |
-| `Dynatrace AI Obs: Parar Coletor` | Stop the collector |
-| `Dynatrace AI Obs: Ver Status` | Show whether the collector is running |
-| `Dynatrace AI Obs: Gerenciar Atributos Customizados` | Add or remove custom span attributes via Quick Pick UI |
-| `Dynatrace AI Obs: Configurar Hooks do Claude Code` | Set up Claude Code hooks manually |
-| `Dynatrace AI Obs: Remover Hooks do Claude Code` | Remove Claude Code hooks |
-| `Dynatrace AI Obs: Configurar Evals (dt-evals)` | Open the interactive Evals configuration wizard |
-| `Dynatrace AI Obs: Rodar Evals` | Select evaluators and run an evaluation |
-| `Dynatrace AI Obs: Validar Setup dos Evals` | Validate the Evals configuration and connectivity |
-| `Dynatrace AI Obs: Ver Status dos Evals` | Show the resolved Evals configuration and status |
+| `Dynatrace AI Governance: Configure Credentials` | Set or update endpoint and API token |
+| `Dynatrace AI Governance: Start Collector` | Start the collector manually |
+| `Dynatrace AI Governance: Stop Collector` | Stop the collector |
+| `Dynatrace AI Governance: View Status` | Show whether the collector is running |
+| `Dynatrace AI Governance: Manage Custom Attributes` | Add or remove custom span attributes via Quick Pick UI |
+| `Dynatrace AI Governance: Configure Claude Code Hooks` | Set up Claude Code hooks manually |
+| `Dynatrace AI Governance: Remove Claude Code Hooks` | Remove Claude Code hooks |
+| `Dynatrace AI Governance: Configure Evals (dt-evals)` | Open the interactive Evals configuration wizard |
+| `Dynatrace AI Governance: Run Evals (e.g. Prompt Injection)` | Select evaluators and run an evaluation |
+| `Dynatrace AI Governance: Validate Evals Setup` | Validate the Evals configuration and connectivity |
+| `Dynatrace AI Governance: View Evals Status` | Show the resolved Evals configuration and status |
+
+> 💡 The configuration panel's **internal tabs** (Configurações / Coletor / Evals) and settings keys (`dynatraceAiObs.*`) were intentionally kept unchanged during the rebrand, so existing installs don't lose saved credentials or need reconfiguration.
 
 ---
 
-## Extension settings
+## ⚙️ Extension settings
 
 | Key | Default | Description |
 |---|---|---|
@@ -549,7 +579,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 
 ---
 
-## Cursor
+## 🖱️ Cursor
 
 ### Claude Code inside Cursor
 
@@ -577,7 +607,7 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 <details open>
 <summary><strong>Common symptoms and fixes</strong></summary>
@@ -600,7 +630,7 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 
 ---
 
-## Building from source
+## 🏗️ Building from source
 
 ```bash
 # 1. Clone
@@ -645,7 +675,7 @@ vscode-dt-ai-observability/
 
 ---
 
-## Privacy and security
+## 🔒 Privacy and security
 
 - **Prompt and response capture**: disabled by default (`dynatraceAiObs.capturePrompts: false`). Enable in VS Code settings to populate the Input/Output columns in the Prompts stream. When disabled, only metadata is captured (model, duration, token counts, tool calls). To stop all capture, use **Dynatrace AI Obs: Remover Hooks do Claude Code**.
 - **Token stored in OS keychain**: VS Code SecretStorage is backed by the OS keychain (Keychain on macOS, Credential Manager on Windows, libsecret on Linux) — never stored in plain text or `settings.json`.
@@ -655,6 +685,6 @@ vscode-dt-ai-observability/
 
 ---
 
-## License
+## 📄 License
 
 MIT — see [LICENSE](LICENSE)
