@@ -168,7 +168,7 @@ export class CollectorManager {
 
         const configPath = this.buildCollectorConfig(config.get<Record<string,string>>('customAttributes', {}));
 
-        this.log(`Iniciando OTel Collector...`);
+        this.log(`Starting OTel Collector...`);
         this.log(`  Endpoint : ${endpoint}`);
         this.log(`  Email    : ${email || '(não definido)'}`);
         this.log(`  Porta    : ${port}`);
@@ -234,7 +234,7 @@ export class CollectorManager {
             }
             this.statusBar.setRunning();
             this.statusListener?.(true);
-            this.log(`Coletor pronto na porta ${port} (health check: ${healthPort}).`);
+            this.log(`Collector ready on port ${port} (health check: ${healthPort}).`);
         } catch {
             this.log(`ERRO: health check falhou na porta ${healthPort}.`);
             vscode.window.showErrorMessage(

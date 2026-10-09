@@ -360,8 +360,8 @@ export function autoConfigureClaudeHooks(): void {
 
     try {
         writeFiles();
-        log(`otel-hook.py v${HOOK_VERSION} atualizado em: ${HOOK_SCRIPT_PATH}`);
-        log(`settings.json atualizado em: ${SETTINGS_PATH}`);
+        log(`otel-hook.py v${HOOK_VERSION} updated at: ${HOOK_SCRIPT_PATH}`);
+        log(`settings.json updated at: ${SETTINGS_PATH}`);
         if (isFirstTime) {
             vscode.window.showInformationMessage(
                 '✓ Dynatrace AI Obs: hooks do Claude Code configurados. Reinicie o Claude Code para ativar.'

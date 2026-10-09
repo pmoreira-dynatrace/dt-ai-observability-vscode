@@ -75,32 +75,32 @@ VS Code / Cursor
 ### Dynatrace tenant
 
 <details>
-<summary><strong>Instalar o app de AI Observability</strong></summary>
+<summary><strong>Install the AI Observability app</strong></summary>
 
-1. Acesse o **Hub**, pesquise por `AI observability` e selecione o app **AI Observability**.
+1. Go to the **Hub**, search for `AI observability`, and select the **AI Observability** app.
 
-   <p align="center"><img src="docs/images/app-01-search.png" width="700" alt="Buscar o app AI Observability no Hub"></p>
+   <p align="center"><img src="docs/images/app-01-search.png" width="700" alt="Searching for the AI Observability app in the Hub"></p>
 
-2. Abra o app e clique em **Open** (ou **Install**, caso ainda não esteja instalado) para disponibilizá-lo na tenant.
+2. Open the app and click **Open** (or **Install**, if not yet installed) to make it available in the tenant.
 
-   <p align="center"><img src="docs/images/app-02-details.png" width="700" alt="Detalhes do app AI Observability"></p>
+   <p align="center"><img src="docs/images/app-02-details.png" width="700" alt="AI Observability app details"></p>
 
 </details>
 
 <details>
-<summary><strong>Gerar o token de acesso</strong></summary>
+<summary><strong>Generate the access token</strong></summary>
 
-1. Abra o menu rápido com **Ctrl+K**, pesquise por `acc` e selecione **Access Tokens** (Classic apps).
+1. Open the quick menu with **Ctrl+K**, search for `acc`, and select **Access Tokens** (Classic apps).
 
-   <p align="center"><img src="docs/images/token-01-search.png" width="700" alt="Buscar Access Tokens via Ctrl+K"></p>
+   <p align="center"><img src="docs/images/token-01-search.png" width="700" alt="Searching for Access Tokens via Ctrl+K"></p>
 
-2. Na tela de Access tokens, clique em **Generate new token**.
+2. On the Access tokens screen, click **Generate new token**.
 
-   <p align="center"><img src="docs/images/token-02-generate.png" width="700" alt="Botão Generate new token"></p>
+   <p align="center"><img src="docs/images/token-02-generate.png" width="700" alt="Generate new token button"></p>
 
-3. Dê um nome ao token e selecione os scopes `metrics.ingest` (**Ingest metrics**) e `openTelemetryTrace.ingest` (**Ingest OpenTelemetry traces**). Em seguida, clique em **Generate token**.
+3. Give the token a name and select the `metrics.ingest` (**Ingest metrics**) and `openTelemetryTrace.ingest` (**Ingest OpenTelemetry traces**) scopes. Then click **Generate token**.
 
-   <p align="center"><img src="docs/images/token-03-scopes.png" width="700" alt="Selecionar scopes e gerar o token"></p>
+   <p align="center"><img src="docs/images/token-03-scopes.png" width="700" alt="Selecting scopes and generating the token"></p>
 
 </details>
 
@@ -234,7 +234,7 @@ Download `dt-ai-observability.vsix` from the [Releases](../../releases/latest) p
 
 5. Pick the downloaded `dt-ai-observability.vsix`
 
-   <p align="center"><img src="docs/images/install-02-vsix-file.png" width="700" alt="Selecionar o arquivo .vsix"></p>
+   <p align="center"><img src="docs/images/install-02-vsix-file.png" width="700" alt="Selecting the .vsix file"></p>
 
 6. Click **Reload**
 
@@ -245,12 +245,12 @@ code --install-extension dt-ai-observability.vsix
 
 ### Step 3 — Configure credentials
 
-On first launch, a prompt appears. Click **Configurar Agora** to open the unified management panel. You can reopen it at any time with `Cmd+Shift+P` → **Dynatrace AI Governance: Configure Credentials**.
+On first launch, a prompt appears. Click **Configure Now** to open the unified management panel. You can reopen it at any time with `Cmd+Shift+P` → **Dynatrace AI Governance: Configure Credentials**.
 
 <details open>
 <summary><strong>Configuration tab</strong></summary>
 
-The **Configurações** tab contains credentials, privacy controls, local ports, and custom attributes in one place.
+The **Settings** tab contains credentials, privacy controls, local ports, and custom attributes in one place.
 
 > **Panel language:** a dropdown in the top-right corner of the panel lets you switch its UI between **Português (BR)**, **English**, and **Español** at any time — the choice is saved automatically and persists across restarts (`dynatraceAiObs.language`). This only affects the panel itself; Command Palette entries and VS Code notifications are unaffected.
 
@@ -267,27 +267,27 @@ Enter only the tenant identifier. The generated OTLP endpoint is shown immediate
 
 <p align="center"><img src="docs/images/panel-01-settings-tenant.png" width="800" alt="Configuration tab using Tenant ID mode, prompt capture controls, ports, and custom attributes"></p>
 
-The highlighted **Coleta** area controls data privacy. Enabling **Capturar conteúdo de prompts e respostas** unlocks Dynatrace Evals; when disabled, only metadata such as model, duration, tokens, and tool calls is collected.
+The highlighted **Collection** area controls data privacy. Enabling **Capture prompt and response content** unlocks Dynatrace Evals; when disabled, only metadata such as model, duration, tokens, and tool calls is collected.
 
 **Full OTLP endpoint mode**
 
-Choose **OTLP Endpoint completo** when using a custom or non-standard endpoint. Enter the complete `/api/v2/otlp` URL and verify that the hostname uses `.live.dynatrace.com`, never `.apps.dynatrace.com`.
+Choose **Full OTLP Endpoint** when using a custom or non-standard endpoint. Enter the complete `/api/v2/otlp` URL and verify that the hostname uses `.live.dynatrace.com`, never `.apps.dynatrace.com`.
 
 <p align="center"><img src="docs/images/panel-02-settings-otlp-endpoint.png" width="800" alt="Configuration tab using the full Dynatrace OTLP endpoint mode"></p>
 
-Use **Validar credenciais** to test the endpoint and token, or just click **Salvar configurações** — credentials are now validated automatically before saving, and the collector restarts on its own to apply the new values.
+Use **Validate credentials** to test the endpoint and token, or just click **Save settings** — credentials are now validated automatically before saving, and the collector restarts on its own to apply the new values.
 
 </details>
 
 <details>
 <summary><strong>Collector tab</strong></summary>
 
-The **Coletor** tab provides day-to-day operational control without leaving the panel:
+The **Collector** tab provides day-to-day operational control without leaving the panel:
 
 - The status indicator shows whether the local OpenTelemetry Collector is running.
-- **Iniciar**, **Parar**, and **Reiniciar** control the managed collector process.
+- **Start**, **Stop**, and **Restart** control the managed collector process.
 - The live log keeps the latest 300 lines and follows new output while you are near the bottom.
-- **Atualizar**, **Ir ao fim**, and **Limpar** help inspect startup, health checks, and export errors.
+- **Refresh**, **Jump to end**, and **Clear** help inspect startup, health checks, and export errors.
 
 <p align="center"><img src="docs/images/panel-03-collector.png" width="800" alt="Collector tab showing running status, process controls, and live OpenTelemetry logs"></p>
 
@@ -296,12 +296,12 @@ The **Coletor** tab provides day-to-day operational control without leaving the 
 <details>
 <summary><strong>Evals tab</strong></summary>
 
-The **Evals** tab centralizes the `@dynatrace-oss/dt-evals` workflow. Prompt capture must be enabled in **Configurações** before Evals can be activated; both toggles stay synchronized.
+The **Evals** tab centralizes the `@dynatrace-oss/dt-evals` workflow. Prompt capture must be enabled in **Settings** before Evals can be activated; both toggles stay synchronized.
 
-- **Instalar dt-evals** installs the CLI.
-- **Abrir wizard de configuração** connects the tenant and configures the LLM judge.
-- **Rodar Evals** selects evaluators, time range, sample size, and execution mode.
-- **Validar setup** checks configuration and connectivity.
+- **Install dt-evals** installs the CLI.
+- **Open configuration wizard** connects the tenant and configures the LLM judge.
+- **Run Evals** selects evaluators, time range, sample size, and execution mode.
+- **Validate setup** checks configuration and connectivity.
 
 Interactive actions open in the integrated terminal so progress and prompts remain visible.
 
@@ -341,9 +341,9 @@ curl http://localhost:13133
 
 You should see:
 ```
-[...] [hooks] otel-hook.py atualizado em: ...
-[...] Iniciando OTel Collector...
-[...] Coletor pronto na porta 4318 (health check: 13133).
+[...] [hooks] otel-hook.py updated at: ...
+[...] Starting OTel Collector...
+[...] Collector ready on port 4318 (health check: 13133).
 ```
 
 ---
@@ -364,7 +364,7 @@ The command opens an interactive menu:
 
 **Via the configuration panel:**
 
-The **Configurações** tab also has an attributes table with a dedicated **Salvar / Atualizar atributos** button — edit the table and click it to persist the changes and restart the collector, without touching the rest of the settings.
+The **Settings** tab also has an attributes table with a dedicated **Save / Update attributes** button — edit the table and click it to persist the changes and restart the collector, without touching the rest of the settings.
 
 Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS Code settings (for the collector resource attributes).
 
@@ -559,7 +559,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 | `Dynatrace AI Governance: Validate Evals Setup` | Validate the Evals configuration and connectivity |
 | `Dynatrace AI Governance: View Evals Status` | Show the resolved Evals configuration and status |
 
-> 💡 The configuration panel's **internal tabs** (Configurações / Coletor / Evals) and settings keys (`dynatraceAiObs.*`) were intentionally kept unchanged during the rebrand, so existing installs don't lose saved credentials or need reconfiguration.
+> 💡 The configuration panel's **internal tabs** (Settings / Collector / Evals) and settings keys (`dynatraceAiObs.*`) were intentionally kept unchanged during the rebrand, so existing installs don't lose saved credentials or need reconfiguration.
 
 ---
 
@@ -620,7 +620,7 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 | Orange status bar after setup | Binary still downloading | Wait — it's ~100 MB on first run |
 | `curl localhost:13133` fails | Port 13133 already in use | The extension now finds a free port automatically; check the Output log for the port actually used |
 | Extension fails to start on port 4318 | Port 4318 already in use | Same as above — an alternative port is chosen and saved automatically |
-| No spans in Dynatrace | Invalid token or endpoint uses `.apps.` | Reconfigure via **Configurar Credenciais** — credentials are now validated before saving |
+| No spans in Dynatrace | Invalid token or endpoint uses `.apps.` | Reconfigure via **Configure Credentials** — credentials are now validated before saving |
 | `user.email` null in spans | Email not filled during setup | Reconfigure and add email |
 | Download fails | No access to `github.com` | Check proxy/firewall; allow `github.com` and `objects.githubusercontent.com` |
 | Copilot sends data but Claude Code doesn't | Python 3 not found | Run `python3 --version` in terminal; install if missing |
@@ -682,7 +682,7 @@ vscode-dt-ai-observability/
 <a id="privacy-and-security"></a>
 ## 🔒 Privacy and security
 
-- **Prompt and response capture**: disabled by default (`dynatraceAiObs.capturePrompts: false`). Enable in VS Code settings to populate the Input/Output columns in the Prompts stream. When disabled, only metadata is captured (model, duration, token counts, tool calls). To stop all capture, use **Dynatrace AI Obs: Remover Hooks do Claude Code**.
+- **Prompt and response capture**: disabled by default (`dynatraceAiObs.capturePrompts: false`). Enable in VS Code settings to populate the Input/Output columns in the Prompts stream. When disabled, only metadata is captured (model, duration, token counts, tool calls). To stop all capture, use **Dynatrace AI Governance: Remove Claude Code Hooks**.
 - **Token stored in OS keychain**: VS Code SecretStorage is backed by the OS keychain (Keychain on macOS, Credential Manager on Windows, libsecret on Linux) — never stored in plain text or `settings.json`.
 - **Credentials validated before saving**: the configuration panel checks the endpoint and token against the Dynatrace API before writing them, so a bad token or URL is caught immediately instead of failing silently at runtime.
 - **Collector makes outbound HTTPS only**: The local collector only connects outbound to your Dynatrace tenant. No public port is exposed.
