@@ -53,6 +53,8 @@ VS Code / Cursor
 <a id="prerequisites"></a>
 ## 🔧 Prerequisites
 
+<div align="center">
+
 | Category | Requirement | Detail |
 |---|---|---|
 | 🏢 Dynatrace tenant | Tenant type | SaaS Latest or Managed, Grail enabled |
@@ -61,6 +63,8 @@ VS Code / Cursor
 | 💻 Developer machine | RAM / Disk | 4 GB / 200 MB free |
 | 💻 Developer machine | OS | macOS 10.15+, Windows 10 1803+, modern Linux |
 | 💻 Developer machine | IDE | VS Code 1.99+ or Cursor 0.40+ |
+
+</div>
 
 > 💡 Full details — including network/firewall rules for corporate environments — are in the collapsible sections below. Nothing here is skippable: a missing scope or a blocked domain causes **silent failures** (no error shown, data just stops flowing).
 
@@ -99,37 +103,25 @@ VS Code / Cursor
 ### Developer machine
 
 <details>
-<summary><strong>Hardware</strong></summary>
+<summary><strong>Hardware, Operating System &amp; IDE</strong></summary>
 
-| Resource | Minimum | Notes |
+<div align="center">
+
+| Category | Requirement | Detail |
 |---|---|---|
-| RAM | 4 GB | Collector uses ~50–80 MB extra |
-| CPU | Any | < 2% additional usage |
-| Disk | 200 MB free | ~100 MB for cached collector binary |
-| Network | Internet access | Required once on first activation (binary download) |
+| 🖥️ Hardware | RAM | 4 GB minimum (collector uses ~50–80 MB extra) |
+| 🖥️ Hardware | CPU | Any (< 2% additional usage) |
+| 🖥️ Hardware | Disk | 200 MB free (~100 MB for cached collector binary) |
+| 🖥️ Hardware | Network | Internet access required once, on first activation |
+| 🪟 Operating System | macOS | 10.15 Catalina+ — x64 (Intel), arm64 (Apple Silicon) |
+| 🪟 Operating System | Windows | 10 build 17134 (1803)+ — x64 |
+| 🪟 Operating System | Linux | Ubuntu 20.04 / Debian 11 / RHEL 8 / Fedora 36 — x64 |
+| 🧩 IDE | VS Code | 1.99.0+ |
+| 🧩 IDE | Cursor | 0.40+ |
 
-</details>
-
-<details>
-<summary><strong>Operating System</strong></summary>
-
-| OS | Minimum version | Architectures |
-|---|---|---|
-| **macOS** | 10.15 Catalina | x64 (Intel), arm64 (Apple Silicon) |
-| **Windows** | 10 build 17134 (1803) | x64 |
-| **Linux** | Ubuntu 20.04 / Debian 11 / RHEL 8 / Fedora 36 | x64 |
+</div>
 
 > Windows 1803+ is required for the built-in `tar` command used to extract the collector binary.
-
-</details>
-
-<details>
-<summary><strong>IDE</strong></summary>
-
-| IDE | Minimum version |
-|---|---|
-| **VS Code** | 1.99.0 |
-| **Cursor** | 0.40+ |
 
 </details>
 
