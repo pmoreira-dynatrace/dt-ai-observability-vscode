@@ -50,31 +50,17 @@ VS Code / Cursor
 
 ---
 
+<a id="prerequisites"></a>
 ## 🔧 Prerequisites
 
-<table>
-<tr><th align="left">🏢 Dynatrace tenant</th><th align="left">💻 Developer machine</th></tr>
-<tr valign="top">
-<td>
-
-| Requirement | Detail |
-|---|---|
-| Tenant type | SaaS Latest or Managed, Grail enabled |
-| App | AI & LLM Observability (from Hub) |
-| API token | `openTelemetryTrace.ingest` + `metrics.ingest` |
-
-</td>
-<td>
-
-| Requirement | Minimum |
-|---|---|
-| RAM / Disk | 4 GB / 200 MB free |
-| OS | macOS 10.15+, Win 10 1803+, Linux (modern) |
-| IDE | VS Code 1.99+ or Cursor 0.40+ |
-
-</td>
-</tr>
-</table>
+| Category | Requirement | Detail |
+|---|---|---|
+| 🏢 Dynatrace tenant | Tenant type | SaaS Latest or Managed, Grail enabled |
+| 🏢 Dynatrace tenant | App | AI & LLM Observability (from Hub) |
+| 🏢 Dynatrace tenant | API token | `openTelemetryTrace.ingest` + `metrics.ingest` |
+| 💻 Developer machine | RAM / Disk | 4 GB / 200 MB free |
+| 💻 Developer machine | OS | macOS 10.15+, Windows 10 1803+, modern Linux |
+| 💻 Developer machine | IDE | VS Code 1.99+ or Cursor 0.40+ |
 
 > 💡 Full details — including network/firewall rules for corporate environments — are in the collapsible sections below. Nothing here is skippable: a missing scope or a blocked domain causes **silent failures** (no error shown, data just stops flowing).
 
@@ -233,6 +219,7 @@ No VPN split-tunnel changes required.
 
 ---
 
+<a id="installation-end-users"></a>
 ## 📦 Installation (end users)
 
 ### Step 1 — Get the VSIX file
@@ -361,6 +348,7 @@ You should see:
 
 ---
 
+<a id="custom-attributes"></a>
 ## 🏷️ Custom attributes
 
 Add custom span attributes (squad, cost center, project, etc.) to every Claude Code and Copilot span without editing JSON files.
@@ -391,6 +379,7 @@ Attributes are saved in `~/.claude/otel-attrs.json` (for Claude Code) and to VS 
 
 ---
 
+<a id="understanding-token-counts"></a>
 ## 🔢 Understanding token counts
 
 ### Why Dynatrace shows far more tokens than expected
@@ -414,6 +403,7 @@ This is the core value of this observability extension: each question that looks
 
 ---
 
+<a id="validating-data-in-dynatrace"></a>
 ## ✅ Validating data in Dynatrace
 
 ### AI & LLM Observability app
@@ -533,6 +523,7 @@ fetch spans, from:now()-1h
 
 ---
 
+<a id="dql-dashboard-for-claude-code"></a>
 ## 📊 DQL Dashboard for Claude Code
 
 Save as a **Notebook** in Dynatrace (Menu → Notebooks → New) to get a persistent dashboard equivalent to the AI Obs Prompts stream.
@@ -541,6 +532,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 
 ---
 
+<a id="available-commands"></a>
 ## ⌨️ Available commands
 
 `Cmd+Shift+P` (or `Ctrl+Shift+P` on Windows/Linux):
@@ -563,6 +555,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 
 ---
 
+<a id="extension-settings"></a>
 ## ⚙️ Extension settings
 
 | Key | Default | Description |
@@ -579,6 +572,7 @@ Paste the five queries above into separate tiles, set the time range to **Last 2
 
 ---
 
+<a id="cursor"></a>
 ## 🖱️ Cursor
 
 ### Claude Code inside Cursor
@@ -607,6 +601,7 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 
 ---
 
+<a id="troubleshooting"></a>
 ## 🛠️ Troubleshooting
 
 <details open>
@@ -630,6 +625,7 @@ This is a known gap — native Cursor AI observability requires Cursor to add OT
 
 ---
 
+<a id="building-from-source"></a>
 ## 🏗️ Building from source
 
 ```bash
@@ -675,6 +671,7 @@ vscode-dt-ai-observability/
 
 ---
 
+<a id="privacy-and-security"></a>
 ## 🔒 Privacy and security
 
 - **Prompt and response capture**: disabled by default (`dynatraceAiObs.capturePrompts: false`). Enable in VS Code settings to populate the Input/Output columns in the Prompts stream. When disabled, only metadata is captured (model, duration, token counts, tool calls). To stop all capture, use **Dynatrace AI Obs: Remover Hooks do Claude Code**.
@@ -685,6 +682,7 @@ vscode-dt-ai-observability/
 
 ---
 
+<a id="license"></a>
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE)
